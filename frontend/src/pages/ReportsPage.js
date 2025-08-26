@@ -266,7 +266,7 @@ const handleExportPDF = () => {
                         {reportData.length > 0 ? (
                             reportData.map(loan => (
                                 <tr key={loan._id} className="hover:bg-gray-100 dark:hover:bg-gray-600">
-                                    <td className="px-6 py-4 whitespace-nowrap text-gray-900 dark:text-white">{loan.usuarioId?.primerNombre} {loan.usuarioId?.primerApellido}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-gray-900 dark:text-white">{loan.usuarioId ? `${loan.usuarioId.primerNombre} ${loan.usuarioId.primerApellido}` : 'Usuario Eliminado'}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-gray-500 dark:text-gray-300">{loan.itemDetails?.titulo || loan.itemDetails?.nombre || 'N/A'}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-gray-500 dark:text-gray-300">{new Date(loan.fechaInicio).toLocaleDateString('es-CL')}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-gray-500 dark:text-gray-300">{new Date(loan.fechaVencimiento).toLocaleDateString('es-CL')}</td>
