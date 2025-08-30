@@ -227,14 +227,14 @@ exports.importResources = async (req, res) => {
 
             const allInstances = [];
             const instanceCounts = {
-                Basica: await ResourceInstance.countDocuments({ codigoInterno: { $regex: /^RBB/ } }),
+                Básica: await ResourceInstance.countDocuments({ codigoInterno: { $regex: /^RBB/ } }),
                 Media: await ResourceInstance.countDocuments({ codigoInterno: { $regex: /^RBM/ } })
             };
 
             createdResources.forEach(resDoc => {
                 const originalResData = newResourcesData.find(r => r.nombre === resDoc.nombre);
                 const quantity = originalResData ? originalResData.cantidadInstancias : 1;
-                const sedePrefix = resDoc.sede === 'Basica' ? 'RBB' : 'RBM';
+                const sedePrefix = resDoc.sede === 'Básica' ? 'RBB' : 'RBM';
 
                 for (let i = 1; i <= quantity; i++) {
                     const sequentialNumber = (instanceCounts[resDoc.sede] + i).toString().padStart(3, '0');

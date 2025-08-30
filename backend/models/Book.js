@@ -8,10 +8,10 @@ const bookSchema = new Schema({
     autor: { type: String, required: true, index: true },
     lugarPublicacion: { type: String, required: true },
     editorial: { type: String, required: true },
-    sede: { // NUEVO CAMPO
+    sede: { 
         type: String,
         required: [true, 'La sede es un campo obligatorio.'],
-        enum: ['Media', 'Basica']
+        enum: ['Media', 'Básica']
     },
     // Datos Adicionales (opcionales)
     pais: { type: String, default: 'Chile' },

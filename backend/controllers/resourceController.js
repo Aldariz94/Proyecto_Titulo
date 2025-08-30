@@ -11,7 +11,7 @@ exports.createResource = async (req, res) => {
         const savedResource = await newResource.save();
 
         if (cantidadInstancias > 0) {
-            const sedePrefix = savedResource.sede === 'Basica' ? 'RBB' : 'RBM';
+            const sedePrefix = savedResource.sede === 'Básica' ? 'RBB' : 'RBM';
             
             const lastInstance = await ResourceInstance.findOne({
                 codigoInterno: { $regex: `^${sedePrefix}` }
@@ -20,7 +20,7 @@ exports.createResource = async (req, res) => {
             let nextNumericPart = 1;
             if (lastInstance && lastInstance.codigoInterno) {
                 const lastNumericPart = parseInt(lastInstance.codigoInterno.split('-')[1]);
-                if (!isNaN(lastNumericPart)) {
+                if (!isNaN(lastNumericPart)) { // Comprobación de seguridad
                     nextNumericPart = lastNumericPart + 1;
                 }
             }
@@ -28,11 +28,9 @@ exports.createResource = async (req, res) => {
             const instances = [];
             for (let i = 0; i < cantidadInstancias; i++) {
                 const sequentialNumber = (nextNumericPart + i).toString().padStart(3, '0');
-                const codigoInternoInstancia = `${sedePrefix}-${sequentialNumber}`;
-                
                 instances.push({
                     resourceId: savedResource._id,
-                    codigoInterno: codigoInternoInstancia,
+                    codigoInterno: `${sedePrefix}-${sequentialNumber}`,
                     estado: 'disponible'
                 });
             }
@@ -41,9 +39,6 @@ exports.createResource = async (req, res) => {
         res.status(201).json({ msg: 'Recurso e instancias creados.', resource: savedResource });
     } catch (err) {
         console.error(err.message);
-        if (err.code === 11000) {
-            return res.status(400).json({ msg: 'Error de duplicado al crear instancias. Inténtelo de nuevo.' });
-        }
         res.status(500).send('Error del servidor');
     }
 };
@@ -150,16 +145,15 @@ exports.updateResource = async (req, res) => {
             });
         }
         
-        // --- SECCIÓN CORREGIDA Y MEJORADA ---
         if (additionalInstances > 0) {
-            const sedePrefix = resource.sede === 'Basica' ? 'RBB' : 'RBM';
+            const sedePrefix = resource.sede === 'Básica' ? 'RBB' : 'RBM';
             
             const lastInstance = await ResourceInstance.findOne({ codigoInterno: { $regex: `^${sedePrefix}` } }).sort({ codigoInterno: -1 });
             
             let nextNumericPart = 1;
             if (lastInstance && lastInstance.codigoInterno) {
                 const lastNumericPart = parseInt(lastInstance.codigoInterno.split('-')[1]);
-                if (!isNaN(lastNumericPart)) {
+                if (!isNaN(lastNumericPart)) { // Comprobación de seguridad
                     nextNumericPart = lastNumericPart + 1;
                 }
             }
@@ -167,11 +161,9 @@ exports.updateResource = async (req, res) => {
             const newInstances = [];
             for (let i = 0; i < additionalInstances; i++) {
                 const sequentialNumber = (nextNumericPart + i).toString().padStart(3, '0');
-                const codigoInterno = `${sedePrefix}-${sequentialNumber}`;
-                
                 newInstances.push({
                     resourceId: resourceId,
-                    codigoInterno: codigoInterno,
+                    codigoInterno: `${sedePrefix}-${sequentialNumber}`,
                     estado: 'disponible'
                 });
             }
@@ -219,7 +211,7 @@ exports.addInstances = async (req, res) => {
             return res.status(404).json({ msg: 'Recurso no encontrado.' });
         }
 
-        const sedePrefix = resource.sede === 'Basica' ? 'RBB' : 'RBM';
+        const sedePrefix = resource.sede === 'Básica' ? 'RBB' : 'RBM';
 
     
         const lastInstance = await ResourceInstance.findOne({

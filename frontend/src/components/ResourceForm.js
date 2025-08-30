@@ -91,7 +91,7 @@ const ResourceForm = ({ onSubmit, onCancel, initialData, onUpdateSuccess }) => {
                     <label className={labelClass}>Sede (Obligatorio)</label>
                     <select name="sede" value={resourceData.sede} onChange={handleChange} required className={inputClass}>
                         <option value="Media">Sede Media</option>
-                        <option value="Basica">Sede Básica</option>
+                        <option value="Básica">Sede Básica</option>
                     </select>
                 </div>
             </div>

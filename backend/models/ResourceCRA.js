@@ -7,7 +7,7 @@ const resourceCRASchema = new Schema({
     sede: {
         type: String,
         required: [true, 'La sede es un campo obligatorio.'],
-        enum: ['Media', 'Basica']
+        enum: ['Media', 'Básica']
     },
     descripcion: { type: String },
     ubicacion: { type: String }
