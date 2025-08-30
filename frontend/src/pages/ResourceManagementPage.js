@@ -86,7 +86,7 @@ const ResourceManagementPage = () => {
                 showNotification('Recurso actualizado exitosamente.');
             } else {
                 await api.post('/resources', payload);
-                showNotification('Recurso creado exitosamente.');
+                showNotification('Recurso actualizado exitosamente.');
             }
             handleCloseModals();
             return true; // Devolvemos 'true' en caso de éxito
