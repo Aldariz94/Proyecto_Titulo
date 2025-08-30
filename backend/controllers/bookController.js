@@ -116,9 +116,7 @@ exports.getBookDetails = async (req, res) => {
     }
 };
 
-// --- FUNCIÓN CORREGIDA ---
 exports.updateBook = async (req, res) => {
-    // Se asegura de recibir los tres posibles campos del formulario
     const { libroData, additionalExemplars, exemplarsToDelete } = req.body;
     const { id: bookId } = req.params;
 
@@ -127,12 +125,25 @@ exports.updateBook = async (req, res) => {
     }
 
     try {
+        // --- INICIO DE LA NUEVA LÓGICA DE VALIDACIÓN ---
+        if (exemplarsToDelete && exemplarsToDelete.length > 0) {
+            // Contamos cuántos ejemplares existen actualmente para este libro.
+            const currentExemplarCount = await Exemplar.countDocuments({ libroId: bookId });
+            
+            // Si la cantidad a eliminar es igual o mayor a las que existen, es un error.
+            if (exemplarsToDelete.length >= currentExemplarCount) {
+                return res.status(400).json({ 
+                    msg: 'No se puede eliminar el último ejemplar. Utilice la opción "Dar de Baja" para eliminar el título completo.' 
+                });
+            }
+        }
+        // --- FIN DE LA NUEVA LÓGICA DE VALIDACIÓN ---
+
         const book = await Book.findByIdAndUpdate(bookId, { $set: libroData }, { new: true });
         if (!book) {
             return res.status(404).json({ msg: 'Libro no encontrado.' });
         }
 
-        // LÓGICA DE ELIMINACIÓN QUE FALTABA
         if (exemplarsToDelete && exemplarsToDelete.length > 0) {
             await Exemplar.deleteMany({
                 _id: { $in: exemplarsToDelete },
@@ -212,15 +223,25 @@ exports.deleteExemplar = async (req, res) => {
 
     try {
         const exemplar = await Exemplar.findById(exemplarId);
-
         if (!exemplar) {
             return res.status(404).json({ msg: 'Ejemplar no encontrado.' });
         }
 
-        // Regla de negocio: No se puede eliminar si está en uso.
         if (['prestado', 'reservado'].includes(exemplar.estado)) {
             return res.status(400).json({ msg: 'No se puede eliminar un ejemplar que está actualmente en préstamo o reservado.' });
         }
+
+        // --- INICIO DE LA NUEVA LÓGICA ---
+        // Contamos cuántos ejemplares existen para el mismo libro.
+        const count = await Exemplar.countDocuments({ libroId: exemplar.libroId });
+
+        // Si solo queda uno, no permitimos que se borre.
+        if (count <= 1) {
+            return res.status(400).json({ 
+                msg: 'No se puede eliminar el último ejemplar. Si deseas retirar el libro del catálogo, debes usar la opción "Dar de Baja" en la página de Gestión de Libros.' 
+            });
+        }
+        // --- FIN DE LA NUEVA LÓGICA ---
 
         await Exemplar.findByIdAndDelete(exemplarId);
 

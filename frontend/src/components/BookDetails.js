@@ -1,9 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import api from '../services/api';
 import StatusBadge from './StatusBadge';
-import { Modal } from './';
-import { TrashIcon } from '@heroicons/react/24/outline';
-
 
 const DetailRow = ({ label, value }) => (
     <div className="py-2 sm:grid sm:grid-cols-3 sm:gap-4">

@@ -37,31 +37,48 @@ exports.getItemsForAttention = async (req, res) => {
 };
 
 
-// --- FUNCIÓN DE ELIMINACIÓN MEJORADA ---
+// --- FUNCIÓN "DAR DE BAJA" CON LÓGICA MEJORADA ---
 exports.deleteItemInstance = async (req, res) => {
     try {
         const { itemModel, itemId } = req.params;
+        if (!mongoose.Types.ObjectId.isValid(itemId)) {
+            return res.status(400).json({ msg: 'ID de ítem no válido.' });
+        }
 
         const Model = itemModel === 'Libro' ? Exemplar : ResourceInstance;
-        
-        // Verificación 1: Que el ítem exista
         const item = await Model.findById(itemId);
+
         if (!item) {
             return res.status(404).json({ msg: 'Instancia o ejemplar no encontrado.' });
         }
 
-        // Verificación 2: Que el ítem no esté en préstamo o reservado
         if (['prestado', 'reservado'].includes(item.estado)) {
              return res.status(400).json({ msg: 'No se puede dar de baja un ítem que está en préstamo o reservado.' });
         }
         
-        // Verificación 3 (Extra): Asegurarse de que no haya un préstamo activo asociado por error
         const activeLoan = await Loan.findOne({ item: itemId, estado: { $in: ['enCurso', 'atrasado'] } });
         if(activeLoan) {
             return res.status(400).json({ msg: 'Este ítem está asociado a un préstamo activo. Primero debe ser devuelto.' });
         }
 
+        // --- INICIO DE LA NUEVA LÓGICA ---
+        if (itemModel === 'Libro') {
+            const count = await Exemplar.countDocuments({ libroId: item.libroId });
+            // Si es la última copia, borramos también el libro principal.
+            if (count <= 1) {
+                await Book.findByIdAndDelete(item.libroId);
+            }
+        } else { // Si es Recurso
+            const count = await ResourceInstance.countDocuments({ resourceId: item.resourceId });
+            // Si es la última copia, borramos también el recurso principal.
+            if (count <= 1) {
+                await ResourceCRA.findByIdAndDelete(item.resourceId);
+            }
+        }
+
+        // Finalmente, borramos el ejemplar o instancia.
         await Model.findByIdAndDelete(itemId);
+        // --- FIN DE LA NUEVA LÓGICA ---
 
         res.json({ msg: 'Ítem dado de baja exitosamente.' });
     } catch (err) {

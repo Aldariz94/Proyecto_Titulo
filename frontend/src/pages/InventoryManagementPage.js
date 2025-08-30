@@ -52,18 +52,20 @@ const InventoryManagementPage = () => {
         });
     };
     
-    // --- LÓGICA PARA ABRIR EL MODAL DE "DAR DE BAJA" ---
+    // --- INICIO DE LA MODIFICACIÓN DE TEXTOS ---
     const handleDeleteClick = (item) => {
         setModalState({
             isOpen: true,
-            title: 'Confirmar Baja de Ítem',
-            message: (
+            title: 'Confirmar Baja de Copia', // Título más específico
+            message: ( // Mensaje más detallado
                 <>
-                    ¿Estás seguro de que deseas dar de baja permanentemente este ítem?
-                    <br />
+                    <p>¿Estás seguro de que deseas dar de baja esta copia específica?</p>
                     <strong className="dark:text-white mt-2 block">
                         {item.libroId?.titulo || item.resourceId?.nombre} ({item.numeroCopia ? `Copia N° ${item.numeroCopia}` : item.codigoInterno})
                     </strong>
+                    <p className="text-sm text-yellow-600 dark:text-yellow-400 mt-4">
+                        <strong>Nota:</strong> Si esta es la última copia existente, el título del libro o recurso también será eliminado del catálogo.
+                    </p>
                 </>
             ),
             onConfirm: () => executeDelete(item),
@@ -71,6 +73,7 @@ const InventoryManagementPage = () => {
             confirmColor: 'bg-red-600 hover:bg-red-700'
         });
     };
+    // --- FIN DE LA MODIFICACIÓN DE TEXTOS ---
 
     const executeStatusChange = async (item, newStatus) => {
         const endpoint = item.itemType === 'Libro' 
@@ -87,11 +90,8 @@ const InventoryManagementPage = () => {
         }
     };
     
-    // --- LÓGICA PARA EJECUTAR LA BAJA ---
     const executeDelete = async (item) => {
-        if (!item) return;
         try {
-            // Usamos la misma ruta DELETE que habíamos definido en el backend
             await api.delete(`/inventory/item/${item.itemType}/${item._id}`);
             showNotification('Ítem dado de baja exitosamente.');
              if (items.length === 1 && currentPage > 1) {
@@ -112,7 +112,7 @@ const InventoryManagementPage = () => {
 
             <Modal isOpen={modalState.isOpen} onClose={handleCloseModal} title={modalState.title}>
                 <div className="space-y-4">
-                    <p className="dark:text-gray-300">{modalState.message}</p>
+                    <div className="dark:text-gray-300">{modalState.message}</div>
                     <div className="flex justify-end pt-4 space-x-2">
                         <button type="button" onClick={handleCloseModal} className="px-4 py-2 font-medium text-gray-600 bg-gray-200 rounded-md dark:bg-zinc-600 dark:text-zinc-300">Cancelar</button>
                         <button type="button" onClick={modalState.onConfirm} className={`px-4 py-2 font-medium text-white rounded-md ${modalState.confirmColor}`}>
@@ -164,9 +164,8 @@ const InventoryManagementPage = () => {
                                                     Encontrado/Repuesto
                                                 </button>
                                             )}
-                                            {/* El botón "Dar de Baja" ahora llama a la función correcta */}
                                             <button onClick={() => handleDeleteClick(item)} className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300">
-                                                Dar de Baja
+                                                Baja de Copia
                                             </button>
                                         </td>
                                     </tr>
@@ -182,7 +181,7 @@ const InventoryManagementPage = () => {
                     </table>
                 )}
             </div>
-            
+
             {!loading && totalPages > 1 && (
                 <div className="flex items-center justify-end mt-4 text-sm">
                     <button
