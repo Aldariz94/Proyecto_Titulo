@@ -7,7 +7,7 @@ const ResourceInstance = require('../models/ResourceInstance');
 
 exports.generateLoanReport = async (req, res) => {
     try {
-        const { startDate, endDate, status, course, bookId, userId } = req.query;
+        const { startDate, endDate, status, course, bookId, userId, includeOrphaned = 'true' } = req.query;
         let { role } = req.query;
 
         const page = parseInt(req.query.page) || 1;
@@ -26,14 +26,15 @@ exports.generateLoanReport = async (req, res) => {
         if (bookId && mongoose.Types.ObjectId.isValid(bookId)) {
             const exemplars = await Exemplar.find({ libroId: bookId }).select('_id');
             const exemplarIds = exemplars.map(ex => ex._id);
+
             if (exemplarIds.length > 0) {
                 query.item = { $in: exemplarIds };
                 query.itemModel = 'Exemplar';
             } else {
-                return res.json({ docs: [], totalPages: 0, page: 1 });
+                return res.json({ docs: [], totalPages: 0, page: 1, totalDocs: 0 });
             }
         }
-
+        
         if (startDate && endDate) {
             const start = new Date(startDate);
             const end = new Date(endDate);
@@ -43,11 +44,9 @@ exports.generateLoanReport = async (req, res) => {
         
         if (status) query.estado = status;
 
-        // Lógica de prioridad de filtros: userId tiene la máxima prioridad.
         if (userId && mongoose.Types.ObjectId.isValid(userId)) {
             userQuery = { _id: userId };
         } else {
-            // Solo si NO se busca un usuario específico, se aplican los filtros de rol/curso.
             if (req.user.rol === 'profesor') {
                 if (role === 'profesor') {
                     userQuery._id = req.user.id;
@@ -67,7 +66,7 @@ exports.generateLoanReport = async (req, res) => {
         if (Object.keys(userQuery).length > 0) {
             const users = await User.find(userQuery).select('_id');
             const userIds = users.map(user => user._id);
-            if (userIds.length === 0) return res.json({ docs: [], totalPages: 0, page: 1 });
+            if (userIds.length === 0) return res.json({ docs: [], totalPages: 0, page: 1, totalDocs: 0 });
             query.usuarioId = { $in: userIds };
         }
 
@@ -76,13 +75,12 @@ exports.generateLoanReport = async (req, res) => {
 
         const loans = await Loan.find(query)
             .populate('usuarioId', 'primerNombre primerApellido rut curso rol')
-            .sort({ fechaInicio: -1 })
+            .sort({ fechaInicio: -1, _id: 1 })
             .skip(skip)
             .limit(limit)
             .lean();
 
-        // Lógica corregida para ser consistente con el resto de la aplicación
-        const formattedLoans = await Promise.all(loans.map(async (loan) => {
+        let formattedLoans = await Promise.all(loans.map(async (loan) => {
             let itemDetails = { titulo: 'Ítem Eliminado', nombre: 'Ítem Eliminado' };
             if (loan.itemModel === 'Exemplar') {
                 const exemplar = await Exemplar.findById(loan.item).populate('libroId', 'titulo');
@@ -98,6 +96,14 @@ exports.generateLoanReport = async (req, res) => {
             return { ...loan, itemDetails };
         }));
 
+        if (includeOrphaned === 'false') {
+            formattedLoans = formattedLoans.filter(loan => {
+                const isUserOrphan = !loan.usuarioId;
+                const isItemOrphan = loan.itemDetails?.titulo === 'Ítem Eliminado' || loan.itemDetails?.nombre === 'Ítem Eliminado';
+                return !isUserOrphan && !isItemOrphan;
+            });
+        }
+        
         res.json({
             docs: formattedLoans,
             totalDocs,

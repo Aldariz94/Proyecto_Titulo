@@ -20,6 +20,8 @@ const ReportsPage = () => {
     const { notification, showNotification } = useNotification();
     const { user } = useAuth();
 
+    const [includeOrphaned, setIncludeOrphaned] = useState(false);
+
     const [studentSearch, setStudentSearch] = useState('');
     const [studentResults, setStudentResults] = useState([]);
     const [selectedStudent, setSelectedStudent] = useState(null);
@@ -40,11 +42,11 @@ const ReportsPage = () => {
         setSelectedStudent(null);
         setCurrentPage(1);
         setTotalPages(0);
+        setIncludeOrphaned(false);
     };
 
     const handleFilterChange = (e) => {
         const { name, value } = e.target;
-        
         setFilters(prev => ({ ...prev, [name]: value }));
 
         if (name === 'role') {
@@ -79,7 +81,8 @@ const ReportsPage = () => {
         setStudentSearch(query);
         setSelectedStudent(null);
         if (query.length > 2) {
-            const res = await api.get(`/search/students?q=${query}`);
+            const searchEndpoint = user.rol === 'admin' ? '/search/users' : '/search/students';
+            const res = await api.get(`${searchEndpoint}?q=${query}`);
             setStudentResults(res.data);
         } else {
             setStudentResults([]);
@@ -108,7 +111,8 @@ const ReportsPage = () => {
                 params.delete('course');
                 params.append('userId', selectedStudent._id);
             }
-
+            
+            params.append('includeOrphaned', includeOrphaned);
             params.append('page', pageToFetch);
             params.append('limit', 15);
 
@@ -117,7 +121,7 @@ const ReportsPage = () => {
             setTotalPages(response.data.totalPages);
             setCurrentPage(response.data.page);
 
-            if(response.data.docs.length === 0 && pageToFetch === 1) { // Solo mostrar si es la primera página
+            if(response.data.docs.length === 0 && pageToFetch === 1) {
                 showNotification("No se encontraron resultados para los filtros aplicados.", "error");
             }
         } catch (err) {
@@ -127,32 +131,32 @@ const ReportsPage = () => {
         }
     };
 
-const handleExportPDF = () => {
-    const doc = new jsPDF();
-    doc.text("Reporte de Préstamos - Biblioteca Escolar", 14, 16);
+    const handleExportPDF = () => {
+        const doc = new jsPDF();
+        doc.text("Reporte de Préstamos - Biblioteca Escolar", 14, 16);
+        
+        const tableColumn = ["Usuario", "Ítem Prestado", "Fecha Préstamo", "Vencimiento", "Estado"];
+        const tableRows = reportData.map(loan => [
+            loan.usuarioId ? `${loan.usuarioId.primerNombre} ${loan.usuarioId.primerApellido}` : 'Usuario Eliminado',
+            loan.itemDetails?.titulo || loan.itemDetails?.nombre || 'Ítem Eliminado',
+            new Date(loan.fechaInicio).toLocaleDateString('es-CL'),
+            new Date(loan.fechaVencimiento).toLocaleDateString('es-CL'),
+            loan.estado === 'enCurso' ? 'En Préstamo' : loan.estado,
+        ]);
+
+        autoTable(doc, {
+            head: [tableColumn],
+            body: tableRows,
+            startY: 20,
+        });
+
+        const date = new Date().toISOString().split('T')[0];
+        doc.save(`Reporte_Prestamos_${date}.pdf`);
+    };
     
-    const tableColumn = ["Usuario", "Ítem Prestado", "Fecha Préstamo", "Vencimiento", "Estado"];
-    const tableRows = reportData.map(loan => [
-        loan.usuarioId ? `${loan.usuarioId.primerNombre} ${loan.usuarioId.primerApellido}` : 'Usuario Eliminado',
-        loan.itemDetails?.titulo || loan.itemDetails?.nombre || 'Ítem Eliminado',
-        new Date(loan.fechaInicio).toLocaleDateString('es-CL'),
-        new Date(loan.fechaVencimiento).toLocaleDateString('es-CL'),
-        loan.estado === 'enCurso' ? 'En Préstamo' : loan.estado,
-    ]);
-
-    autoTable(doc, {
-        head: [tableColumn],
-        body: tableRows,
-        startY: 20,
-    });
-
-    const date = new Date().toISOString().split('T')[0];
-    doc.save(`Reporte_Prestamos_${date}.pdf`);
-};
-
     useEffect(() => {
         setCurrentPage(1);
-    }, [filters, selectedBook, selectedStudent]);
+    }, [filters, selectedBook, selectedStudent, includeOrphaned]);
 
 
     return (
@@ -160,38 +164,51 @@ const handleExportPDF = () => {
             <Notification {...notification} />
             <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Generar Reportes</h1>
             
-            <div className="mt-6 p-4 bg-white rounded-lg shadow dark:bg-gray-800">
+            <div className="mt-6 p-4 bg-white rounded-lg shadow dark:bg-zinc-800">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Fecha de Inicio</label>
-                        <input type="date" name="startDate" value={filters.startDate} onChange={handleFilterChange} className="mt-1 block w-full px-3 py-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
+                        <input type="date" name="startDate" value={filters.startDate} onChange={handleFilterChange} className="mt-1 block w-full px-3 py-2 border rounded-md dark:bg-zinc-700 dark:border-zinc-600 dark:text-white" />
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Fecha de Fin</label>
-                        <input type="date" name="endDate" value={filters.endDate} onChange={handleFilterChange} className="mt-1 block w-full px-3 py-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
+                        <input type="date" name="endDate" value={filters.endDate} onChange={handleFilterChange} className="mt-1 block w-full px-3 py-2 border rounded-md dark:bg-zinc-700 dark:border-zinc-600 dark:text-white" />
                     </div>
                      <div className="relative">
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Filtrar por Libro</label>
-                        <input type="text" value={bookSearch} onChange={handleBookSearch} placeholder="Buscar libro..." className="mt-1 block w-full px-3 py-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
+                        <input type="text" value={bookSearch} onChange={handleBookSearch} placeholder="Buscar libro..." className="mt-1 block w-full px-3 py-2 border rounded-md dark:bg-zinc-700 dark:border-zinc-600 dark:text-white" />
                         {bookResults.length > 0 && (
-                            <ul className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg dark:bg-gray-800 dark:border-gray-600 max-h-40 overflow-y-auto">{bookResults.map(book => (<li key={book._id} onClick={() => selectBook(book)} className="px-4 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 dark:text-white">{book.titulo}</li>))}</ul>
+                            <ul className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg dark:bg-zinc-800 dark:border-zinc-600 max-h-40 overflow-y-auto">{bookResults.map(book => (<li key={book._id} onClick={() => selectBook(book)} className="px-4 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-zinc-700 dark:text-white">{book.titulo}</li>))}</ul>
                         )}
                     </div>
                     <div className="relative">
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Filtrar por Alumno</label>
-                        <input type="text" value={studentSearch} onChange={handleStudentSearch} placeholder="Buscar por nombre..." className="mt-1 block w-full px-3 py-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                            {user.rol === 'admin' ? 'Filtrar por Usuario' : 'Filtrar por Alumno'}
+                        </label>
+                        <input 
+                            type="text" 
+                            value={studentSearch} 
+                            onChange={handleStudentSearch} 
+                            placeholder={user.rol === 'admin' ? 'Buscar cualquier usuario...' : 'Buscar alumno por nombre...'}
+                            className="mt-1 block w-full px-3 py-2 border rounded-md dark:bg-zinc-700 dark:border-zinc-600 dark:text-white" 
+                        />
                         {studentResults.length > 0 && (
-                            <ul className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg dark:bg-gray-800 dark:border-gray-600 max-h-40 overflow-y-auto">{studentResults.map(student => (<li key={student._id} onClick={() => selectStudent(student)} className="px-4 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 dark:text-white">{student.primerNombre} {student.primerApellido}</li>))}</ul>
+                            <ul className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg dark:bg-zinc-800 dark:border-zinc-600 max-h-40 overflow-y-auto">
+                                {studentResults.map(student => (
+                                    <li key={student._id} onClick={() => selectStudent(student)} className="px-4 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-zinc-700 dark:text-white">
+                                        {student.primerNombre} {student.primerApellido}
+                                    </li>
+                                ))}
+                            </ul>
                         )}
                     </div>
-
                     <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Filtrar por Rol</label>
                         <select 
                             name="role" 
                             value={filters.role} 
                             onChange={handleFilterChange} 
-                            className="mt-1 block w-full px-3 py-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                            className="mt-1 block w-full px-3 py-2 border rounded-md dark:bg-zinc-700 dark:border-zinc-600 dark:text-white"
                         >
                             {user.rol === 'admin' ? (
                                 <>
@@ -208,14 +225,13 @@ const handleExportPDF = () => {
                             )}
                         </select>
                     </div>
-
                     <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Curso (solo alumnos)</label>
                         <select 
                             name="course" 
                             value={filters.course} 
                             onChange={handleFilterChange} 
-                            className="mt-1 block w-full px-3 py-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                            className="mt-1 block w-full px-3 py-2 border rounded-md dark:bg-zinc-700 dark:border-zinc-600 dark:text-white"
                             disabled={!!selectedStudent || (user.rol === 'profesor' && filters.role === 'profesor')}
                         >
                             <option value="">Todos los Cursos</option>
@@ -224,7 +240,7 @@ const handleExportPDF = () => {
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Estado del Préstamo</label>
-                        <select name="status" value={filters.status} onChange={handleFilterChange} className="mt-1 block w-full px-3 py-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                        <select name="status" value={filters.status} onChange={handleFilterChange} className="mt-1 block w-full px-3 py-2 border rounded-md dark:bg-zinc-700 dark:border-zinc-600 dark:text-white">
                             <option value="">Todos</option>
                             <option value="enCurso">En Préstamo</option>
                             <option value="devuelto">Devuelto</option>
@@ -232,8 +248,21 @@ const handleExportPDF = () => {
                         </select>
                     </div>
                 </div>
+
+                <div className="mt-4 pt-4 border-t border-gray-200 dark:border-zinc-700">
+                    <label className="flex items-center text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+                        <input
+                            type="checkbox"
+                            checked={includeOrphaned}
+                            onChange={(e) => setIncludeOrphaned(e.target.checked)}
+                            className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                        />
+                        <span className="ml-2">Incluir registros de usuarios o ítems eliminados</span>
+                    </label>
+                </div>
+
                 <div className="mt-4 flex flex-col sm:flex-row justify-end gap-2">
-                    <button onClick={handleResetFilters} className="px-6 py-2 font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 dark:bg-gray-600 dark:text-gray-300 dark:hover:bg-gray-500">
+                    <button onClick={handleResetFilters} className="px-6 py-2 font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 dark:bg-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-500">
                         Reiniciar Filtros
                     </button>
                     <button onClick={() => handleGenerateReport(1)} disabled={loading} className="px-6 py-2 font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 disabled:bg-indigo-400">
@@ -251,9 +280,9 @@ const handleExportPDF = () => {
                 </div>
             )}
 
-            <div className="mt-4 overflow-x-auto bg-white rounded-lg shadow dark:bg-gray-800">
-                <table className="min-w-full text-sm divide-y divide-gray-200 dark:divide-gray-700 responsive-table">
-                    <thead className="bg-gray-50 dark:bg-gray-700">
+            <div className="mt-4 overflow-x-auto bg-white rounded-lg shadow dark:bg-zinc-800">
+                <table className="min-w-full text-sm divide-y divide-gray-200 dark:divide-zinc-700 responsive-table">
+                    <thead className="bg-gray-50 dark:bg-zinc-700">
                         <tr>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-300">Usuario</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-300">Ítem Prestado</th>
@@ -262,12 +291,12 @@ const handleExportPDF = () => {
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-300">Estado</th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                    <tbody className="divide-y divide-gray-200 dark:divide-zinc-700">
                         {reportData.length > 0 ? (
                             reportData.map(loan => (
-                                <tr key={loan._id} className="hover:bg-gray-100 dark:hover:bg-gray-600">
+                                <tr key={loan._id} className="hover:bg-gray-100 dark:hover:bg-zinc-600">
                                     <td className="px-6 py-4 whitespace-nowrap text-gray-900 dark:text-white">{loan.usuarioId ? `${loan.usuarioId.primerNombre} ${loan.usuarioId.primerApellido}` : 'Usuario Eliminado'}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-gray-500 dark:text-gray-300">{loan.itemDetails?.titulo || loan.itemDetails?.nombre || 'N/A'}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-gray-500 dark:text-gray-300">{loan.itemDetails?.titulo || loan.itemDetails?.nombre || 'Ítem Eliminado'}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-gray-500 dark:text-gray-300">{new Date(loan.fechaInicio).toLocaleDateString('es-CL')}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-gray-500 dark:text-gray-300">{new Date(loan.fechaVencimiento).toLocaleDateString('es-CL')}</td>
                                     <td className="px-6 py-4 whitespace-nowrap"><span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full capitalize ${loan.estado === 'atrasado' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300' : loan.estado === 'devuelto' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' : 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300'}`}>{loan.estado === 'enCurso' ? 'En Préstamo' : loan.estado}</span></td>
@@ -289,17 +318,17 @@ const handleExportPDF = () => {
                     <button
                         onClick={() => handleGenerateReport(currentPage - 1)}
                         disabled={currentPage === 1}
-                        className="px-3 py-1 mr-2 text-gray-700 bg-gray-200 rounded-md dark:bg-gray-700 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="px-3 py-1 mr-2 text-gray-700 bg-gray-200 rounded-md dark:bg-zinc-700 dark:text-zinc-300 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         Anterior
                     </button>
-                    <span className="text-gray-700 dark:text-gray-300">
+                    <span className="text-gray-700 dark:text-zinc-300">
                         Página {currentPage} de {totalPages}
                     </span>
                     <button
                         onClick={() => handleGenerateReport(currentPage + 1)}
                         disabled={currentPage === totalPages}
-                        className="px-3 py-1 ml-2 text-gray-700 bg-gray-200 rounded-md dark:bg-gray-700 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="px-3 py-1 ml-2 text-gray-700 bg-gray-200 rounded-md dark:bg-zinc-700 dark:text-zinc-300 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         Siguiente
                     </button>
