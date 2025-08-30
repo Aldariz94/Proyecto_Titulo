@@ -7,24 +7,25 @@ exports.createResource = async (req, res) => {
     const { resourceData, cantidadInstancias } = req.body;
     
     try {
-        delete resourceData.codigoInterno; // Nos aseguramos de no usar el del formulario
-
         const newResource = new ResourceCRA(resourceData);
         const savedResource = await newResource.save();
 
         if (cantidadInstancias > 0) {
-            // --- NUEVA LÓGICA DE GENERACIÓN DE CÓDIGO ---
             const sedePrefix = savedResource.sede === 'Basica' ? 'RBB' : 'RBM';
-
-            // Contamos cuántas instancias ya existen con este prefijo para saber el número inicial
-            const lastInstanceCount = await ResourceInstance.countDocuments({
+            
+            const lastInstance = await ResourceInstance.findOne({
                 codigoInterno: { $regex: `^${sedePrefix}` }
-            });
+            }).sort({ codigoInterno: -1 });
+
+            let nextNumericPart = 1;
+            if (lastInstance) {
+                const lastNumericPart = parseInt(lastInstance.codigoInterno.split('-')[1]);
+                nextNumericPart = lastNumericPart + 1;
+            }
             
             const instances = [];
-            for (let i = 1; i <= cantidadInstancias; i++) {
-                // Generamos el número secuencial, rellenando con ceros a la izquierda hasta tener 3 dígitos
-                const sequentialNumber = (lastInstanceCount + i).toString().padStart(3, '0');
+            for (let i = 0; i < cantidadInstancias; i++) {
+                const sequentialNumber = (nextNumericPart + i).toString().padStart(3, '0');
                 const codigoInternoInstancia = `${sedePrefix}-${sequentialNumber}`;
                 
                 instances.push({
@@ -45,9 +46,7 @@ exports.createResource = async (req, res) => {
     }
 };
 
-// --- (El resto de las funciones del controlador no cambian) ---
 
-// --- INICIO DE LA MODIFICACIÓN ---
 exports.getResources = async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
@@ -119,22 +118,53 @@ exports.getResources = async (req, res) => {
         res.status(500).send('Error del servidor al obtener recursos');
     }
 };
-// --- FIN DE LA MODIFICACIÓN ---
-
+// --- FUNCIÓN CORREGIDA ---
 exports.updateResource = async (req, res) => {
-    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+    const { resourceData, additionalInstances, instancesToDelete } = req.body;
+    const { id: resourceId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(resourceId)) {
         return res.status(400).json({ msg: 'ID de recurso no válido.' });
     }
+
     try {
-        const resource = await ResourceCRA.findByIdAndUpdate(
-            req.params.id,
-            { $set: req.body },
-            { new: true }
-        );
-        if (!resource) return res.status(404).json({ msg: 'Recurso no encontrado.' });
-        res.json({ msg: 'Recurso actualizado.', resource });
+        const resource = await ResourceCRA.findByIdAndUpdate(resourceId, { $set: resourceData }, { new: true });
+        if (!resource) {
+            return res.status(404).json({ msg: 'Recurso no encontrado.' });
+        }
+
+        // LÓGICA DE ELIMINACIÓN QUE FALTABA
+        if (instancesToDelete && instancesToDelete.length > 0) {
+            await ResourceInstance.deleteMany({
+                _id: { $in: instancesToDelete },
+                estado: { $nin: ['prestado', 'reservado'] }
+            });
+        }
+        
+        if (additionalInstances > 0) {
+            const sedePrefix = resource.sede === 'Basica' ? 'RBB' : 'RBM';
+            const lastInstance = await ResourceInstance.findOne({ codigoInterno: { $regex: `^${sedePrefix}` } }).sort({ codigoInterno: -1 });
+            let nextNumericPart = 1;
+            if (lastInstance) {
+                const lastNumericPart = parseInt(lastInstance.codigoInterno.split('-')[1]);
+                nextNumericPart = lastNumericPart + 1;
+            }
+            const newInstances = [];
+            for (let i = 0; i < additionalInstances; i++) {
+                const sequentialNumber = (nextNumericPart + i).toString().padStart(3, '0');
+                const codigoInterno = `${sedePrefix}-${sequentialNumber}`;
+                newInstances.push({
+                    resourceId: resourceId,
+                    codigoInterno: codigoInterno,
+                    estado: 'disponible'
+                });
+            }
+            await ResourceInstance.insertMany(newInstances);
+        }
+
+        res.json({ msg: 'Recurso actualizado exitosamente.', resource });
     } catch (err) {
-        console.error(err.message);
+        console.error("Error al actualizar el recurso:", err.message);
         res.status(500).send('Error del servidor');
     }
 };
@@ -155,25 +185,80 @@ exports.deleteResource = async (req, res) => {
     }
 };
 
+
 exports.addInstances = async (req, res) => {
-    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+    const { id: resourceId } = req.params;
+    const { quantity } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(resourceId)) {
         return res.status(400).json({ msg: 'ID de recurso no válido.' });
     }
-    const { quantity, codigoInternoBase } = req.body;
+    if (!quantity || quantity < 1) {
+        return res.status(400).json({ msg: 'Cantidad no válida.' });
+    }
+
     try {
-        const instanceCount = await ResourceInstance.countDocuments({ resourceId: req.params.id });
-        
+        const resource = await ResourceCRA.findById(resourceId);
+        if (!resource) {
+            return res.status(404).json({ msg: 'Recurso no encontrado.' });
+        }
+
+        const sedePrefix = resource.sede === 'Basica' ? 'RBB' : 'RBM';
+
+    
+        const lastInstance = await ResourceInstance.findOne({
+            codigoInterno: { $regex: `^${sedePrefix}` }
+        }).sort({ codigoInterno: -1 });
+
+        let nextNumericPart = 1;
+        if (lastInstance) {
+            const lastNumericPart = parseInt(lastInstance.codigoInterno.split('-')[1]);
+            nextNumericPart = lastNumericPart + 1;
+        }
+
         const newInstances = [];
         for (let i = 0; i < quantity; i++) {
-            const codigoInterno = `${codigoInternoBase}-${instanceCount + i + 1}`;
+            const sequentialNumber = (nextNumericPart + i).toString().padStart(3, '0');
+            const codigoInterno = `${sedePrefix}-${sequentialNumber}`;
+            
             newInstances.push({
-                resourceId: req.params.id,
+                resourceId: resourceId,
                 codigoInterno: codigoInterno,
                 estado: 'disponible'
             });
         }
+
         await ResourceInstance.insertMany(newInstances);
         res.status(201).json({ msg: `${quantity} nuevas instancias añadidas.` });
+
+    } catch (err) {
+        console.error("Error al añadir instancias:", err.message);
+        res.status(500).send('Error del servidor');
+    }
+};
+
+exports.deleteInstance = async (req, res) => {
+    const { instanceId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(instanceId)) {
+        return res.status(400).json({ msg: 'ID de instancia no válido.' });
+    }
+
+    try {
+        const instance = await ResourceInstance.findById(instanceId);
+
+        if (!instance) {
+            return res.status(404).json({ msg: 'Instancia no encontrada.' });
+        }
+
+        
+        if (['prestado', 'reservado'].includes(instance.estado)) {
+            return res.status(400).json({ msg: 'No se puede eliminar una instancia que está actualmente en préstamo o reservada.' });
+        }
+
+        await ResourceInstance.findByIdAndDelete(instanceId);
+
+        res.json({ msg: 'Instancia eliminada exitosamente.' });
     } catch (err) {
         console.error(err.message);
         res.status(500).send('Error del servidor');

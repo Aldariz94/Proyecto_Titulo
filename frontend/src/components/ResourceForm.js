@@ -1,7 +1,11 @@
-// frontend/src/components/ResourceForm.js
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import api from '../services/api';
+import { TrashIcon } from '@heroicons/react/24/outline';
+import StatusBadge from './StatusBadge';
+import { useNotification } from '../hooks';
+import { Notification } from './';
 
-const ResourceForm = ({ onSubmit, onCancel, initialData }) => {
+const ResourceForm = ({ onSubmit, onCancel, initialData, onUpdateSuccess }) => {
     const [resourceData, setResourceData] = useState({
         nombre: '', categoria: 'tecnologia',
         descripcion: '', ubicacion: '', sede: 'Media',
@@ -9,6 +13,21 @@ const ResourceForm = ({ onSubmit, onCancel, initialData }) => {
     const [cantidadInstancias, setCantidadInstancias] = useState(1);
     const [additionalInstances, setAdditionalInstances] = useState(0);
     const isEditing = !!initialData;
+
+    const [instances, setInstances] = useState([]);
+    const [instancesToDelete, setInstancesToDelete] = useState([]);
+    const { notification, showNotification } = useNotification();
+
+    const fetchInstances = useCallback(async () => {
+        if (isEditing) {
+            try {
+                const res = await api.get(`/resources/${initialData._id}/instances`);
+                setInstances(res.data);
+            } catch (error) {
+                showNotification('No se pudieron cargar las instancias.', 'error');
+            }
+        }
+    }, [isEditing, initialData, showNotification]);
 
     useEffect(() => {
         if (isEditing) {
@@ -19,31 +38,44 @@ const ResourceForm = ({ onSubmit, onCancel, initialData }) => {
                 ubicacion: initialData.ubicacion || '',
                 sede: initialData.sede || 'Media',
             });
+            fetchInstances();
         }
-    }, [initialData, isEditing]);
+    }, [initialData, isEditing, fetchInstances]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
         setResourceData(prev => ({ ...prev, [name]: value }));
     };
 
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        const payload = isEditing ? { resourceData, additionalInstances } : { resourceData, cantidadInstancias };
-        onSubmit(payload);
+    const handleDeleteClick = (instanceId) => {
+        setInstancesToDelete([...instancesToDelete, instanceId]);
+        setInstances(instances.filter(inst => inst._id !== instanceId));
     };
 
-    const inputClass = "w-full px-3 py-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white";
+    // --- FUNCIÓN handleSubmit MODIFICADA ---
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        const payload = isEditing 
+            ? { resourceData, additionalInstances, instancesToDelete } 
+            : { resourceData, cantidadInstancias };
+        
+        const success = await onSubmit(payload);
+
+        if (success) {
+            onUpdateSuccess();
+        }
+    };
+
+    const inputClass = "w-full px-3 py-2 border rounded-md dark:bg-zinc-700 dark:border-zinc-600 dark:text-white";
     const labelClass = "block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300";
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4 max-h-[75vh] overflow-y-auto pr-2">
+            <Notification {...notification} />
             <div>
                 <label className={labelClass}>Nombre del Recurso (Obligatorio)</label>
                 <input name="nombre" value={resourceData.nombre} onChange={handleChange} placeholder="Proyector Epson" required className={inputClass} />
             </div>
-            
-            {/* --- CAMPO DE CÓDIGO INTERNO ELIMINADO --- */}
             
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
@@ -71,10 +103,32 @@ const ResourceForm = ({ onSubmit, onCancel, initialData }) => {
                 <label className={labelClass}>Descripción (Opcional)</label>
                 <textarea name="descripcion" value={resourceData.descripcion} onChange={handleChange} placeholder="Proyector para salas de clases" className={inputClass + " h-24"} />
             </div>
-            
+
+            {isEditing && (
+                <div className="mt-6 pt-4 border-t dark:border-zinc-700">
+                    <h4 className="mb-2 font-bold dark:text-white">Gestionar Instancias Existentes</h4>
+                    <div className="max-h-40 overflow-y-auto pr-2 space-y-2">
+                        {instances.map(inst => (
+                            <div key={inst._id} className="flex items-center justify-between p-2 rounded bg-gray-100 dark:bg-zinc-700">
+                                <span className="dark:text-gray-300">{inst.codigoInterno}</span>
+                                <div className="flex items-center gap-4">
+                                    <StatusBadge status={inst.estado} />
+                                    {inst.estado !== 'prestado' && inst.estado !== 'reservado' && (
+                                        <button type="button" onClick={() => handleDeleteClick(inst._id)} className="text-red-500 hover:text-red-700" title="Marcar para Eliminar">
+                                            <TrashIcon className="w-5 h-5" />
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        ))}
+                        {instances.length === 0 && <p className="text-sm text-gray-500 dark:text-gray-400">No quedan instancias para gestionar.</p>}
+                    </div>
+                </div>
+            )}
+
             {isEditing && (
                  <div>
-                    <label className={labelClass}>Añadir más Recursos</label>
+                    <label className={labelClass}>Añadir más Instancias</label>
                     <input type="number" value={additionalInstances} onChange={(e) => setAdditionalInstances(Number(e.target.value))} min="0" className={inputClass} />
                 </div>
             )}
@@ -87,12 +141,8 @@ const ResourceForm = ({ onSubmit, onCancel, initialData }) => {
             )}
 
             <div className="flex justify-end pt-4 space-x-2">
-                <button type="button" onClick={onCancel} className="px-4 py-2 font-medium text-gray-600 bg-gray-200 rounded-md dark:bg-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-500">
-                    Cancelar
-                </button>
-                <button type="submit" className="px-4 py-2 font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700">
-                    Guardar
-                </button>
+                <button type="button" onClick={onCancel} className="px-4 py-2 font-medium text-gray-600 bg-gray-200 rounded-md">Cancelar</button>
+                <button type="submit" className="px-4 py-2 font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700">Guardar</button>
             </div>
         </form>
     );

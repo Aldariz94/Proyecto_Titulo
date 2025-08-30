@@ -1,8 +1,7 @@
-// backend/controllers/inventoryController.js
 const Exemplar = require('../models/Exemplar');
 const ResourceInstance = require('../models/ResourceInstance');
+const Loan = require('../models/Loan');
 
-// --- INICIO DE LA MODIFICACIÓN ---
 exports.getItemsForAttention = async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
@@ -36,19 +35,33 @@ exports.getItemsForAttention = async (req, res) => {
         res.status(500).send('Error del servidor');
     }
 };
-// --- FIN DE LA MODIFICACIÓN ---
 
+
+// --- FUNCIÓN DE ELIMINACIÓN MEJORADA ---
 exports.deleteItemInstance = async (req, res) => {
     try {
         const { itemModel, itemId } = req.params;
 
         const Model = itemModel === 'Libro' ? Exemplar : ResourceInstance;
         
-        const deletedItem = await Model.findByIdAndDelete(itemId);
-
-        if (!deletedItem) {
+        // Verificación 1: Que el ítem exista
+        const item = await Model.findById(itemId);
+        if (!item) {
             return res.status(404).json({ msg: 'Instancia o ejemplar no encontrado.' });
         }
+
+        // Verificación 2: Que el ítem no esté en préstamo o reservado
+        if (['prestado', 'reservado'].includes(item.estado)) {
+             return res.status(400).json({ msg: 'No se puede dar de baja un ítem que está en préstamo o reservado.' });
+        }
+        
+        // Verificación 3 (Extra): Asegurarse de que no haya un préstamo activo asociado por error
+        const activeLoan = await Loan.findOne({ item: itemId, estado: { $in: ['enCurso', 'atrasado'] } });
+        if(activeLoan) {
+            return res.status(400).json({ msg: 'Este ítem está asociado a un préstamo activo. Primero debe ser devuelto.' });
+        }
+
+        await Model.findByIdAndDelete(itemId);
 
         res.json({ msg: 'Ítem dado de baja exitosamente.' });
     } catch (err) {

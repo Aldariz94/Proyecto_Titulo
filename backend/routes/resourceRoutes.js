@@ -1,6 +1,15 @@
 const express = require('express');
 const router = express.Router();
-const { createResource, getResources, updateResource, deleteResource, addInstances, getInstancesForResource, updateInstanceStatus } = require('../controllers/resourceController');
+const { 
+        createResource, 
+        getResources, 
+        updateResource, 
+        deleteResource, 
+        addInstances, 
+        deleteInstance,
+        getInstancesForResource, 
+        updateInstanceStatus 
+    } = require('../controllers/resourceController');
 const authMiddleware = require('../middleware/authMiddleware');
 const { checkRole } = require('../middleware/roleMiddleware');
 
@@ -14,5 +23,6 @@ router.get('/', [authMiddleware, checkRole(['admin', 'profesor'])], getResources
 router.post('/:id/instances', [authMiddleware, checkRole(['admin'])], addInstances);
 router.get('/:id/instances', [authMiddleware, checkRole(['admin'])], getInstancesForResource);
 router.put('/instances/:instanceId', [authMiddleware, checkRole(['admin'])], updateInstanceStatus);
+router.delete('/instances/:instanceId', [authMiddleware, checkRole(['admin'])], deleteInstance);
 
 module.exports = router;

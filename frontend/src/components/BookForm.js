@@ -1,6 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import api from '../services/api';
+import { TrashIcon } from '@heroicons/react/24/outline';
+import StatusBadge from './StatusBadge';
+import { useNotification } from '../hooks';
+import { Notification } from './';
 
-const BookForm = ({ onSubmit, onCancel, initialData }) => {
+const BookForm = ({ onSubmit, onCancel, initialData, onUpdateSuccess }) => {
     const [libroData, setLibroData] = useState({
         titulo: '', autor: '', editorial: '', lugarPublicacion: '', añoPublicacion: '',
         tipoDocumento: 'Libro', isbn: '', pais: 'Chile', numeroPaginas: '',
@@ -10,6 +15,22 @@ const BookForm = ({ onSubmit, onCancel, initialData }) => {
     const [cantidadEjemplares, setCantidadEjemplares] = useState(1);
     const [additionalExemplars, setAdditionalExemplars] = useState(0);
     const isEditing = !!initialData;
+
+    // Estados para gestionar los ejemplares en modo edición
+    const [exemplars, setExemplars] = useState([]);
+    const [exemplarsToDelete, setExemplarsToDelete] = useState([]);
+    const { notification, showNotification } = useNotification();
+
+    const fetchExemplars = useCallback(async () => {
+        if (isEditing) {
+            try {
+                const res = await api.get(`/books/${initialData._id}/exemplars`);
+                setExemplars(res.data);
+            } catch (error) {
+                showNotification('No se pudieron cargar los ejemplares.', 'error');
+            }
+        }
+    }, [isEditing, initialData, showNotification]);
 
     useEffect(() => {
         if (isEditing) {
@@ -23,29 +44,46 @@ const BookForm = ({ onSubmit, onCancel, initialData }) => {
                 edicion: initialData.edicion || '', ubicacionEstanteria: initialData.ubicacionEstanteria || '',
                 sede: initialData.sede || 'Media'
             });
+            fetchExemplars();
         }
-    }, [initialData, isEditing]);
+    }, [initialData, isEditing, fetchExemplars]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
         setLibroData(prev => ({ ...prev, [name]: value }));
     };
 
-    const handleSubmit = (e) => {
+    const handleDeleteClick = (exemplarId) => {
+        setExemplarsToDelete([...exemplarsToDelete, exemplarId]);
+        setExemplars(exemplars.filter(ex => ex._id !== exemplarId));
+    };
+
+   // --- FUNCIÓN handleSubmit MODIFICADA ---
+    const handleSubmit = async (e) => { // 2. La convertimos en 'async'
         e.preventDefault();
         const finalData = {
             ...libroData,
             descriptores: libroData.descriptores.split(',').map(d => d.trim()).filter(Boolean)
         };
-        const payload = isEditing ? { libroData: finalData, additionalExemplars } : { libroData: finalData, cantidadEjemplares };
-        onSubmit(payload);
+        const payload = isEditing 
+            ? { libroData: finalData, additionalExemplars, exemplarsToDelete } 
+            : { libroData: finalData, cantidadEjemplares };
+        
+        // 3. Esperamos el resultado de la función onSubmit del padre
+        const success = await onSubmit(payload);
+
+        // 4. Si fue exitosa, llamamos a la función para refrescar la tabla
+        if (success) {
+            onUpdateSuccess();
+        }
     };
 
-    const inputClass = "w-full px-3 py-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white";
+    const inputClass = "w-full px-3 py-2 border rounded-md dark:bg-zinc-700 dark:border-zinc-600 dark:text-white";
     const labelClass = "block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300";
 
     return (
         <form onSubmit={handleSubmit} className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
+            <Notification {...notification} />
             <h4 className="font-bold dark:text-white">Datos Principales (Obligatorios)</h4>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
@@ -116,6 +154,28 @@ const BookForm = ({ onSubmit, onCancel, initialData }) => {
                 <input name="descriptores" value={libroData.descriptores} onChange={handleChange} placeholder="historia, antropologia, evolucion" className={inputClass} />
             </div>
             
+             {isEditing && (
+                <div className="mt-6 pt-4 border-t dark:border-zinc-700">
+                    <h4 className="mb-2 font-bold dark:text-white">Gestionar Ejemplares Existentes</h4>
+                    <div className="max-h-40 overflow-y-auto pr-2 space-y-2">
+                        {exemplars.map(ex => (
+                            <div key={ex._id} className="flex items-center justify-between p-2 rounded bg-gray-100 dark:bg-zinc-700">
+                                <span className="dark:text-gray-300">Copia N° {ex.numeroCopia}</span>
+                                <div className="flex items-center gap-4">
+                                    <StatusBadge status={ex.estado} />
+                                    {ex.estado !== 'prestado' && ex.estado !== 'reservado' && (
+                                        <button type="button" onClick={() => handleDeleteClick(ex._id)} className="text-red-500 hover:text-red-700" title="Marcar para Eliminar">
+                                            <TrashIcon className="w-5 h-5" />
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        ))}
+                        {exemplars.length === 0 && <p className="text-sm text-gray-500 dark:text-gray-400">No quedan ejemplares para gestionar.</p>}
+                    </div>
+                </div>
+            )}
+            
             {isEditing && (
                 <div>
                     <label className={labelClass}>Añadir más ejemplares</label>
@@ -125,20 +185,14 @@ const BookForm = ({ onSubmit, onCancel, initialData }) => {
 
             {!isEditing && (
                 <div>
-                    <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-                        Cantidad de Ejemplares a Crear (Obligatorio)
-                    </label>
+                    <label className={labelClass}>Cantidad de Ejemplares a Crear (Obligatorio)</label>
                     <input type="number" value={cantidadEjemplares} onChange={(e) => setCantidadEjemplares(Number(e.target.value))} min="1" required className={inputClass} />
                 </div>
             )}
 
             <div className="flex justify-end pt-4 space-x-2">
-                <button type="button" onClick={onCancel} className="px-4 py-2 font-medium text-gray-600 bg-gray-200 rounded-md dark:bg-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-500">
-                    Cancelar
-                </button>
-                <button type="submit" className="px-4 py-2 font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700">
-                    Guardar
-                </button>
+                <button type="button" onClick={onCancel} className="px-4 py-2 font-medium text-gray-600 bg-gray-200 rounded-md">Cancelar</button>
+                <button type="submit" className="px-4 py-2 font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700">Guardar</button>
             </div>
         </form>
     );

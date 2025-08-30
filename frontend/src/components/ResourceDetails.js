@@ -1,6 +1,6 @@
-// frontend/src/components/ResourceDetails.js
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import api from '../services/api';
+import StatusBadge from './StatusBadge';
 
 const DetailRow = ({ label, value }) => (
     <div className="py-2 sm:grid sm:grid-cols-3 sm:gap-4">
@@ -9,31 +9,25 @@ const DetailRow = ({ label, value }) => (
     </div>
 );
 
-const StatusBadge = ({ status }) => {
-    const statusStyles = {
-        disponible: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
-        prestado: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
-        mantenimiento: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300',
-        reservado: 'bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-300',
-    };
-
-    return (
-        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusStyles[status] || 'bg-gray-100 text-gray-800'}`}>
-            {status}
-        </span>
-    );
-};
-
 const ResourceDetails = ({ resource }) => {
     const [instances, setInstances] = useState([]);
+    const [loading, setLoading] = useState(false);
 
-    useEffect(() => {
+    const fetchInstances = useCallback(async () => {
         if (resource) {
-            api.get(`/resources/${resource._id}/instances`).then(res => setInstances(res.data));
+            setLoading(true);
+            try {
+                const res = await api.get(`/resources/${resource._id}/instances`);
+                setInstances(res.data);
+            } finally {
+                setLoading(false);
+            }
         }
     }, [resource]);
 
-    // La función handleStatusChange ha sido eliminada ya que no se usa.
+    useEffect(() => {
+        fetchInstances();
+    }, [fetchInstances]);
 
     if (!resource) return null;
 
@@ -46,15 +40,20 @@ const ResourceDetails = ({ resource }) => {
                 <DetailRow label="Ubicación" value={resource.ubicacion} />
                 <DetailRow label="Descripción" value={resource.descripcion} />
             </dl>
-            <h4 className="mt-6 mb-2 font-bold dark:text-white">Unidades</h4>
-            <div className="max-h-48 overflow-y-auto pr-2">
-                {instances.map(inst => (
-                    <div key={inst._id} className="flex items-center justify-between py-2 border-b dark:border-gray-700">
-                        <span className="dark:text-gray-300">{inst.codigoInterno}</span>
-                        <StatusBadge status={inst.estado} />
-                    </div>
-                ))}
-            </div>
+            <h4 className="mt-6 mb-2 font-bold dark:text-white">Instancias</h4>
+            {loading ? <p className="dark:text-gray-400">Cargando instancias...</p> : (
+                <div className="max-h-60 overflow-y-auto pr-2">
+                    {instances.map(inst => (
+                        <div key={inst._id} className="flex items-center justify-between py-2 border-b dark:border-zinc-700">
+                            <span className="dark:text-gray-300">{inst.codigoInterno}</span>
+                            <StatusBadge status={inst.estado} />
+                        </div>
+                    ))}
+                    {instances.length === 0 && (
+                        <p className="text-sm text-gray-500 dark:text-gray-400">No hay instancias registradas.</p>
+                    )}
+                </div>
+            )}
         </div>
     );
 };

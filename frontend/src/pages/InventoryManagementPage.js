@@ -1,5 +1,3 @@
-// frontend/src/pages/InventoryManagementPage.js
-
 import React, { useState, useEffect, useCallback } from 'react';
 import api from '../services/api';
 import { useNotification } from '../hooks';
@@ -9,12 +7,9 @@ const InventoryManagementPage = () => {
     const [items, setItems] = useState([]);
     const [loading, setLoading] = useState(true);
     const { notification, showNotification } = useNotification();
-
-    // Estados para la paginación
     const [currentPage, setCurrentPage] = useState(1);
     const [totalPages, setTotalPages] = useState(0);
 
-    // Estado unificado para manejar el modal
     const [modalState, setModalState] = useState({
         isOpen: false,
         title: '',
@@ -42,12 +37,9 @@ const InventoryManagementPage = () => {
         fetchItems(currentPage);
     }, [currentPage, fetchItems]);
 
-    // Función que CIERRA el modal y resetea su estado
     const handleCloseModal = () => {
         setModalState({ isOpen: false, title: '', message: '', onConfirm: null });
     };
-
-    // --- Handlers para ABRIR el modal ---
 
     const handleStatusChangeClick = (item, newStatus) => {
         setModalState({
@@ -60,18 +52,25 @@ const InventoryManagementPage = () => {
         });
     };
     
+    // --- LÓGICA PARA ABRIR EL MODAL DE "DAR DE BAJA" ---
     const handleDeleteClick = (item) => {
         setModalState({
             isOpen: true,
-            title: 'Confirmar Eliminación',
-            message: `ADVERTENCIA: Estás a punto de eliminar permanentemente el registro de esta copia (${item.numeroCopia ? `Copia N° ${item.numeroCopia}` : item.codigoInterno}). ¿Deseas continuar?`,
+            title: 'Confirmar Baja de Ítem',
+            message: (
+                <>
+                    ¿Estás seguro de que deseas dar de baja permanentemente este ítem?
+                    <br />
+                    <strong className="dark:text-white mt-2 block">
+                        {item.libroId?.titulo || item.resourceId?.nombre} ({item.numeroCopia ? `Copia N° ${item.numeroCopia}` : item.codigoInterno})
+                    </strong>
+                </>
+            ),
             onConfirm: () => executeDelete(item),
             confirmText: 'Sí, Dar de Baja',
             confirmColor: 'bg-red-600 hover:bg-red-700'
         });
     };
-
-    // --- Funciones que EJECUTAN la lógica de la API ---
 
     const executeStatusChange = async (item, newStatus) => {
         const endpoint = item.itemType === 'Libro' 
@@ -88,8 +87,11 @@ const InventoryManagementPage = () => {
         }
     };
     
+    // --- LÓGICA PARA EJECUTAR LA BAJA ---
     const executeDelete = async (item) => {
+        if (!item) return;
         try {
+            // Usamos la misma ruta DELETE que habíamos definido en el backend
             await api.delete(`/inventory/item/${item.itemType}/${item._id}`);
             showNotification('Ítem dado de baja exitosamente.');
              if (items.length === 1 && currentPage > 1) {
@@ -112,7 +114,7 @@ const InventoryManagementPage = () => {
                 <div className="space-y-4">
                     <p className="dark:text-gray-300">{modalState.message}</p>
                     <div className="flex justify-end pt-4 space-x-2">
-                        <button type="button" onClick={handleCloseModal} className="px-4 py-2 font-medium text-gray-600 bg-gray-200 rounded-md dark:bg-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-500">Cancelar</button>
+                        <button type="button" onClick={handleCloseModal} className="px-4 py-2 font-medium text-gray-600 bg-gray-200 rounded-md dark:bg-zinc-600 dark:text-zinc-300">Cancelar</button>
                         <button type="button" onClick={modalState.onConfirm} className={`px-4 py-2 font-medium text-white rounded-md ${modalState.confirmColor}`}>
                             {modalState.confirmText}
                         </button>
@@ -125,12 +127,12 @@ const InventoryManagementPage = () => {
                 Ítems que están marcados como deteriorados, extraviados o en mantenimiento.
             </p>
 
-            <div className="mt-6 overflow-x-auto bg-white rounded-lg shadow dark:bg-gray-800">
+            <div className="mt-6 overflow-x-auto bg-white rounded-lg shadow dark:bg-zinc-800">
                 {loading ? (
                     <div className="p-6 text-center dark:text-gray-300">Cargando inventario...</div>
                 ) : (
-                    <table className="min-w-full text-sm divide-y divide-gray-200 dark:divide-gray-700 responsive-table">
-                        <thead className="bg-gray-50 dark:bg-gray-700">
+                    <table className="min-w-full text-sm divide-y divide-gray-200 dark:divide-zinc-700 responsive-table">
+                        <thead className="bg-gray-50 dark:bg-zinc-700">
                             <tr>
                                 <th className="px-6 py-3 text-left font-medium text-gray-500 uppercase dark:text-gray-300">Título</th>
                                 <th className="px-6 py-3 text-left font-medium text-gray-500 uppercase dark:text-gray-300">Tipo</th>
@@ -139,10 +141,10 @@ const InventoryManagementPage = () => {
                                 <th className="px-6 py-3 text-left font-medium text-gray-500 uppercase dark:text-gray-300">Acciones</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                        <tbody className="divide-y divide-gray-200 dark:divide-zinc-700">
                             {items.length > 0 ? (
                                 items.map(item => (
-                                    <tr key={item._id} className="hover:bg-gray-100 dark:hover:bg-gray-600">
+                                    <tr key={item._id} className="hover:bg-gray-100 dark:hover:bg-zinc-600">
                                         <td className="px-6 py-4 text-gray-900 dark:text-white">{item.libroId?.titulo || item.resourceId?.nombre || 'N/A'}</td>
                                         <td className="px-6 py-4 text-gray-500 dark:text-gray-300">{item.itemType}</td>
                                         <td className="px-6 py-4 text-gray-500 dark:text-gray-300">{item.numeroCopia ? `Copia N° ${item.numeroCopia}` : item.codigoInterno}</td>
@@ -162,11 +164,10 @@ const InventoryManagementPage = () => {
                                                     Encontrado/Repuesto
                                                 </button>
                                             )}
-                                            {(item.estado === 'deteriorado' || item.estado === 'extraviado') && (
-                                                <button onClick={() => handleDeleteClick(item)} className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300">
-                                                    Dar de Baja
-                                                </button>
-                                            )}
+                                            {/* El botón "Dar de Baja" ahora llama a la función correcta */}
+                                            <button onClick={() => handleDeleteClick(item)} className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300">
+                                                Dar de Baja
+                                            </button>
                                         </td>
                                     </tr>
                                 ))
@@ -181,24 +182,23 @@ const InventoryManagementPage = () => {
                     </table>
                 )}
             </div>
-
-            {/* Controles de Paginación */}
+            
             {!loading && totalPages > 1 && (
                 <div className="flex items-center justify-end mt-4 text-sm">
                     <button
                         onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                         disabled={currentPage === 1}
-                        className="px-3 py-1 mr-2 text-gray-700 bg-gray-200 rounded-md dark:bg-gray-700 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="px-3 py-1 mr-2 text-gray-700 bg-gray-200 rounded-md dark:bg-zinc-700 dark:text-zinc-300 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         Anterior
                     </button>
-                    <span className="text-gray-700 dark:text-gray-300">
+                    <span className="text-gray-700 dark:text-zinc-300">
                         Página {currentPage} de {totalPages}
                     </span>
                     <button
                         onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                         disabled={currentPage === totalPages}
-                        className="px-3 py-1 ml-2 text-gray-700 bg-gray-200 rounded-md dark:bg-gray-700 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="px-3 py-1 ml-2 text-gray-700 bg-gray-200 rounded-md dark:bg-zinc-700 dark:text-zinc-300 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         Siguiente
                     </button>

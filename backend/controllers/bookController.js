@@ -116,20 +116,48 @@ exports.getBookDetails = async (req, res) => {
     }
 };
 
+// --- FUNCIÓN CORREGIDA ---
 exports.updateBook = async (req, res) => {
-    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+    // Se asegura de recibir los tres posibles campos del formulario
+    const { libroData, additionalExemplars, exemplarsToDelete } = req.body;
+    const { id: bookId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(bookId)) {
         return res.status(400).json({ msg: 'ID de libro no válido.' });
     }
+
     try {
-        const book = await Book.findByIdAndUpdate(
-            req.params.id,
-            { $set: req.body },
-            { new: true }
-        );
-        if (!book) return res.status(404).json({ msg: 'Libro no encontrado.' });
+        const book = await Book.findByIdAndUpdate(bookId, { $set: libroData }, { new: true });
+        if (!book) {
+            return res.status(404).json({ msg: 'Libro no encontrado.' });
+        }
+
+        // LÓGICA DE ELIMINACIÓN QUE FALTABA
+        if (exemplarsToDelete && exemplarsToDelete.length > 0) {
+            await Exemplar.deleteMany({
+                _id: { $in: exemplarsToDelete },
+                estado: { $nin: ['prestado', 'reservado'] }
+            });
+        }
+        
+        if (additionalExemplars > 0) {
+            const lastExemplar = await Exemplar.findOne({ libroId: bookId }).sort({ numeroCopia: -1 });
+            const startCopyNumber = lastExemplar ? lastExemplar.numeroCopia + 1 : 1;
+
+            const newExemplars = [];
+            for (let i = 0; i < additionalExemplars; i++) {
+                newExemplars.push({
+                    libroId: bookId,
+                    numeroCopia: startCopyNumber + i,
+                    estado: 'disponible'
+                });
+            }
+            await Exemplar.insertMany(newExemplars);
+        }
+
         res.json({ msg: 'Libro actualizado exitosamente.', book });
     } catch (err) {
-        console.error(err.message);
+        console.error("Error al actualizar el libro:", err.message);
         res.status(500).send('Error del servidor');
     }
 };

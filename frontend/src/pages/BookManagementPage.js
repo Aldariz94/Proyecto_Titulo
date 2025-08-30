@@ -85,21 +85,20 @@ const BookManagementPage = () => {
     const handleSubmit = async (payload) => {
         try {
             if (editingBook) {
-                await api.put(`/books/${editingBook._id}`, payload.libroData);
-                if (payload.additionalExemplars > 0) {
-                    await api.post(`/books/${editingBook._id}/exemplars`, { quantity: payload.additionalExemplars });
-                }
+                await api.put(`/books/${editingBook._id}`, payload);
                 showNotification('Libro actualizado exitosamente.');
             } else {
                 await api.post('/books', payload);
                 showNotification('Libro creado exitosamente.');
             }
             handleCloseModals();
-            fetchBooks(currentPage, debouncedSearchTerm);
+            return true; // Devolvemos 'true' para indicar que la operación fue exitosa
         } catch (err) {
             showNotification(err.response?.data?.msg || 'Error al guardar el libro.', 'error');
+            return false; // Devolvemos 'false' si hubo un error
         }
     };
+
 
     const handleDeleteClick = (book) => {
         setDeletingBook(book);
@@ -142,7 +141,12 @@ const BookManagementPage = () => {
             </div>
 
             <Modal isOpen={isFormModalOpen} onClose={handleCloseModals} title={editingBook ? "Editar Libro" : "Crear Nuevo Libro"}>
-                <BookForm onSubmit={handleSubmit} onCancel={handleCloseModals} initialData={editingBook} />
+                <BookForm 
+                    onSubmit={handleSubmit} 
+                    onCancel={handleCloseModals} 
+                    initialData={editingBook}
+                    onUpdateSuccess={() => fetchBooks(currentPage, debouncedSearchTerm)}
+                />
             </Modal>
 
             <Modal isOpen={isViewModalOpen} onClose={handleCloseModals} title="Detalles del Libro">
@@ -166,7 +170,7 @@ const BookManagementPage = () => {
             <Modal isOpen={isDeleteModalOpen} onClose={handleCloseModals} title="Confirmar Eliminación">
                 <div className="space-y-4">
                     <p className="dark:text-gray-300">
-                        ¿Estás seguro de que deseas eliminar el libro <strong className="dark:text-white">"{deletingBook?.titulo}"</strong>?
+                        ¿Estás seguro de que dar de baja el libro <strong className="dark:text-white">"{deletingBook?.titulo}"</strong>?
                     </p>
                     <p className="text-sm text-red-600 dark:text-red-400">
                         Esta acción es irreversible y eliminará también todos sus ejemplares.
@@ -206,7 +210,7 @@ const BookManagementPage = () => {
                                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-4">
                                         <button onClick={() => handleOpenViewModal(book)} className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300">Ver</button>
                                         <button onClick={() => handleOpenEditModal(book)} className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300">Editar</button>
-                                        <button onClick={() => handleDeleteClick(book)} className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300">Eliminar</button>
+                                        <button onClick={() => handleDeleteClick(book)} className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300">Dar de Baja</button>
                                     </td>
                                 </tr>
                             ))}
