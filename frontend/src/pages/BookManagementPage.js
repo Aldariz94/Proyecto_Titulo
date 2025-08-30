@@ -146,7 +146,10 @@ const BookManagementPage = () => {
             </Modal>
 
             <Modal isOpen={isViewModalOpen} onClose={handleCloseModals} title="Detalles del Libro">
-                <BookDetails book={viewingBook} />
+                <BookDetails 
+                    book={viewingBook} 
+                    onUpdate={() => fetchBooks(currentPage, debouncedSearchTerm)} 
+                />
             </Modal>
 
             <Modal isOpen={isImportModalOpen} onClose={() => setIsImportModalOpen(false)} title="Importar Libros desde Excel">

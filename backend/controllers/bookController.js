@@ -175,6 +175,34 @@ exports.addExemplars = async (req, res) => {
     }
 };
 
+exports.deleteExemplar = async (req, res) => {
+    const { exemplarId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(exemplarId)) {
+        return res.status(400).json({ msg: 'ID de ejemplar no válido.' });
+    }
+
+    try {
+        const exemplar = await Exemplar.findById(exemplarId);
+
+        if (!exemplar) {
+            return res.status(404).json({ msg: 'Ejemplar no encontrado.' });
+        }
+
+        // Regla de negocio: No se puede eliminar si está en uso.
+        if (['prestado', 'reservado'].includes(exemplar.estado)) {
+            return res.status(400).json({ msg: 'No se puede eliminar un ejemplar que está actualmente en préstamo o reservado.' });
+        }
+
+        await Exemplar.findByIdAndDelete(exemplarId);
+
+        res.json({ msg: 'Ejemplar eliminado exitosamente.' });
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Error del servidor');
+    }
+};
+
 exports.getExemplarsForBook = async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
         return res.status(400).json({ msg: 'ID de libro no válido.' });
