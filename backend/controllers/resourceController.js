@@ -1,7 +1,7 @@
-// backend/controllers/resourceController.js
 const ResourceCRA = require('../models/ResourceCRA');
 const ResourceInstance = require('../models/ResourceInstance');
 const mongoose = require('mongoose');
+const Loan = require('../models/Loan');
 
 exports.createResource = async (req, res) => {
     const { resourceData, cantidadInstancias } = req.body;
@@ -18,9 +18,11 @@ exports.createResource = async (req, res) => {
             }).sort({ codigoInterno: -1 });
 
             let nextNumericPart = 1;
-            if (lastInstance) {
+            if (lastInstance && lastInstance.codigoInterno) {
                 const lastNumericPart = parseInt(lastInstance.codigoInterno.split('-')[1]);
-                nextNumericPart = lastNumericPart + 1;
+                if (!isNaN(lastNumericPart)) {
+                    nextNumericPart = lastNumericPart + 1;
+                }
             }
             
             const instances = [];
@@ -46,7 +48,6 @@ exports.createResource = async (req, res) => {
     }
 };
 
-
 exports.getResources = async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
@@ -60,12 +61,12 @@ exports.getResources = async (req, res) => {
             query = {
                 $or: [
                     { nombre: searchRegex },
-                    { categoria: searchRegex },
-                    { sede: searchRegex }
+                    { sede: searchRegex },
+                    { categoria: searchRegex }
                 ]
             };
         }
-
+        
         const results = await ResourceCRA.aggregate([
             { $match: query },
             {
@@ -102,7 +103,7 @@ exports.getResources = async (req, res) => {
                 }
             }
         ]);
-
+        
         const resources = results[0].data;
         const totalResources = results[0].metadata[0] ? results[0].metadata[0].total : 0;
         const totalPages = Math.ceil(totalResources / limit);
@@ -115,9 +116,10 @@ exports.getResources = async (req, res) => {
         });
     } catch (err) {
         console.error("Error en getResources:", err.message);
-        res.status(500).send('Error del servidor al obtener recursos');
+        res.status(500).send('Error del servidor');
     }
 };
+
 exports.updateResource = async (req, res) => {
     const { resourceData, additionalInstances, instancesToDelete } = req.body;
     const { id: resourceId } = req.params;
@@ -127,7 +129,6 @@ exports.updateResource = async (req, res) => {
     }
 
     try {
-        // --- INICIO DE LA NUEVA LÓGICA DE VALIDACIÓN ---
         if (instancesToDelete && instancesToDelete.length > 0) {
             const currentInstanceCount = await ResourceInstance.countDocuments({ resourceId: resourceId });
             if (instancesToDelete.length >= currentInstanceCount) {
@@ -136,7 +137,6 @@ exports.updateResource = async (req, res) => {
                 });
             }
         }
-        // --- FIN DE LA NUEVA LÓGICA DE VALIDACIÓN ---
 
         const resource = await ResourceCRA.findByIdAndUpdate(resourceId, { $set: resourceData }, { new: true });
         if (!resource) {
@@ -150,8 +150,32 @@ exports.updateResource = async (req, res) => {
             });
         }
         
+        // --- SECCIÓN CORREGIDA Y MEJORADA ---
         if (additionalInstances > 0) {
-            // ... (código para añadir instancias sin cambios)
+            const sedePrefix = resource.sede === 'Basica' ? 'RBB' : 'RBM';
+            
+            const lastInstance = await ResourceInstance.findOne({ codigoInterno: { $regex: `^${sedePrefix}` } }).sort({ codigoInterno: -1 });
+            
+            let nextNumericPart = 1;
+            if (lastInstance && lastInstance.codigoInterno) {
+                const lastNumericPart = parseInt(lastInstance.codigoInterno.split('-')[1]);
+                if (!isNaN(lastNumericPart)) {
+                    nextNumericPart = lastNumericPart + 1;
+                }
+            }
+
+            const newInstances = [];
+            for (let i = 0; i < additionalInstances; i++) {
+                const sequentialNumber = (nextNumericPart + i).toString().padStart(3, '0');
+                const codigoInterno = `${sedePrefix}-${sequentialNumber}`;
+                
+                newInstances.push({
+                    resourceId: resourceId,
+                    codigoInterno: codigoInterno,
+                    estado: 'disponible'
+                });
+            }
+            await ResourceInstance.insertMany(newInstances);
         }
 
         res.json({ msg: 'Recurso actualizado exitosamente.', resource });
