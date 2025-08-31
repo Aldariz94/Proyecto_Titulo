@@ -490,7 +490,7 @@ Días hábiles por tipo (libro/recurso), cupos por rol, simultaneidad por base, 
 Impl.: colección Policies, cache en memoria con invalidación; validationUtils lee dinámicamente.
 Criterio: cambios en Policies aplican sin reiniciar servidor.
 
--Escaneo de códigos (browser)
+- Escaneo de códigos (browser)
 Lectura de ISBN/QR/barcode desde la cámara del navegador para alta rápida y check-in/out.
 Impl.: getUserMedia + lib de decodificación (JS puro).
 Criterio: flujo de préstamo/devolución vía escaneo en < 10 s.
