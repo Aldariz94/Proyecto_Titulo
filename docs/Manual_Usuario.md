@@ -16,7 +16,7 @@ Sistema de **Biblioteca Escolar CRA**. Este manual cubre **todo el sistema** con
 - **Reserva:** expira a **2 días hábiles** si no se confirma.
 - **Sanción:** bloquea nuevas reservas/préstamos hasta la fecha indicada.
 
-![IMG-00 — Portada del sistema (público)](docs/img/IMG-00-portada-publica.png)  
+![IMG-00 — Portada del sistema (público)](./docs/img/IMG-00-portada-publica.png)  
 *Vista pública sin iniciar sesión.*
 
 ![IMG-001 — Inicia sesión](docs/img/IMG-001-inicia-sesion.png)
