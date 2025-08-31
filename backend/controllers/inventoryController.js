@@ -10,17 +10,45 @@ exports.getItemsForAttention = async (req, res) => {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 10;
         const skip = (page - 1) * limit;
+        const search = req.query.search || '';
+        const status = req.query.status || '';
+        const type = req.query.type || ''; // <-- 1. Captura el nuevo filtro de TIPO
 
-        const problemStatus = ['deteriorado', 'extraviado', 'mantenimiento'];
+        let problemStatus = ['deteriorado', 'extraviado', 'mantenimiento'];
+        if (status) {
+            problemStatus = [status];
+        }
 
-        const exemplars = await Exemplar.find({ estado: { $in: problemStatus } }).populate('libroId', 'titulo').lean();
-        const resourceInstances = await ResourceInstance.find({ estado: { $in: problemStatus } }).populate('resourceId', 'nombre').lean();
+        let exemplars = [];
+        let resourceInstances = [];
+
+        // 2. Lógica condicional basada en el filtro de TIPO
+        if (type !== 'Recurso') { // Busca libros si el tipo es 'Libro' o si no se ha especificado tipo
+            let exemplarQuery = { estado: { $in: problemStatus.filter(s => s !== 'mantenimiento') } };
+            if (search) {
+                const searchRegex = new RegExp(search, 'i');
+                const matchingBooks = await Book.find({ titulo: searchRegex }).select('_id');
+                exemplarQuery.libroId = { $in: matchingBooks.map(b => b._id) };
+            }
+            exemplars = await Exemplar.find(exemplarQuery).populate('libroId', 'titulo').lean();
+        }
+
+        if (type !== 'Libro') { // Busca recursos si el tipo es 'Recurso' o si no se ha especificado tipo
+            let resourceQuery = { estado: { $in: problemStatus.filter(s => s === 'mantenimiento') } };
+            if (search) {
+                const searchRegex = new RegExp(search, 'i');
+                // 3. Se elimina la búsqueda por 'codigoInterno'
+                const matchingResources = await ResourceCRA.find({ nombre: searchRegex }).select('_id');
+                resourceQuery.resourceId = { $in: matchingResources.map(r => r._id) };
+            }
+            resourceInstances = await ResourceInstance.find(resourceQuery).populate('resourceId', 'nombre').lean();
+        }
 
         const formattedExemplars = exemplars.map(e => ({ ...e, itemType: 'Libro' }));
         const formattedInstances = resourceInstances.map(i => ({ ...i, itemType: 'Recurso' }));
 
         const allItems = [...formattedExemplars, ...formattedInstances]
-            .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt)); // Ordenar por fecha de actualización
+            .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
 
         const totalItems = allItems.length;
         const totalPages = Math.ceil(totalItems / limit);

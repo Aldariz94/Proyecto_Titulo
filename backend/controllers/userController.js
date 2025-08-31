@@ -129,8 +129,27 @@ exports.getSanctionedUsers = async (req, res) => {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 10;
         const skip = (page - 1) * limit;
+        const search = req.query.search || ''; // <-- Capturamos el término de búsqueda
         
-        const query = { sancionHasta: { $gt: new Date() } };
+        // Query base: siempre buscamos usuarios con sanción activa.
+        let query = { sancionHasta: { $gt: new Date() } };
+
+        // Si hay un término de búsqueda, lo añadimos a la query.
+        if (search) {
+            const searchRegex = new RegExp(search, 'i');
+            query = {
+                $and: [ // Usamos $and para combinar la condición de sanción con la de búsqueda
+                    { sancionHasta: { $gt: new Date() } },
+                    {
+                        $or: [
+                            { primerNombre: searchRegex },
+                            { primerApellido: searchRegex },
+                            { rut: searchRegex }
+                        ]
+                    }
+                ]
+            };
+        }
 
         const total = await User.countDocuments(query);
         const totalPages = Math.ceil(total / limit);
@@ -140,7 +159,7 @@ exports.getSanctionedUsers = async (req, res) => {
             .skip(skip)
             .limit(limit);
 
-        res.json({ docs: users, totalPages, page });
+        res.json({ docs: users, totalDocs: total, totalPages, page });
 
     } catch (err) {
         console.error(err.message);
