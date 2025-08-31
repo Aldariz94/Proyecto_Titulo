@@ -19,7 +19,7 @@ Sistema de **Biblioteca Escolar CRA**. Este manual cubre **todo el sistema** con
 ![IMG-00 — Portada del sistema (público)](docs/img/IMG-00-portada-publica.png)  
 *Vista pública sin iniciar sesión.*
 
-![IMG-001 — Inicia sesión](docs/img/IMG-001-inicia-sesion.png)
+![IMG-001 — Inicia sesión](img/IMG-001-inicia-sesion.png)
 
 ![IMG-00b — Menú móvil desplegado](docs/img/IMG-00b-menu-movil.png)  
 *Menú lateral en dispositivos móviles.*
