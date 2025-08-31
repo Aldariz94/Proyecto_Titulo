@@ -16,12 +16,12 @@ Sistema de **Biblioteca Escolar CRA**. Este manual cubre **todo el sistema** con
 - **Reserva:** expira a **2 días hábiles** si no se confirma.
 - **Sanción:** bloquea nuevas reservas/préstamos hasta la fecha indicada.
 
-![IMG-00 — Portada del sistema (público)](docs/img/IMG-00-portada-publica.png)  
+![IMG-00 — Portada del sistema (público)](img/IMG-00-portada-publica.png)  
 *Vista pública sin iniciar sesión.*
 
 ![IMG-001 — Inicia sesión](img/IMG-001-inicia-sesion.png)
 
-![IMG-00b — Menú móvil desplegado](docs/img/IMG-00b-menu-movil.png)  
+![IMG-00b — Menú móvil desplegado](img/IMG-00b-menu-movil.png)  
 *Menú lateral en dispositivos móviles.*
 
 ---
@@ -30,7 +30,7 @@ Sistema de **Biblioteca Escolar CRA**. Este manual cubre **todo el sistema** con
 
 Al entrar como **Admin** verás el **Dashboard** con tarjetas: **Préstamos del día**, **Reservas activas**, **Préstamos atrasados**, **Usuarios sancionados** e **Ítems en atención**. Desde cada tarjeta puedes **hacer click** para ir a la sección relacionada.
 
-![IMG-01 — Dashboard (Admin)](docs/img/IMG-01-dashboard-admin.png)  
+![IMG-01 — Dashboard (Admin)](img/IMG-01-dashboard-admin.png)  
 *Panel con métricas y accesos rápidos.*
 
 ### 1.1 Usuarios
@@ -39,7 +39,7 @@ Al entrar como **Admin** verás el **Dashboard** con tarjetas: **Préstamos del 
 **Para:** alta/baja/edición de usuarios y asignar **roles**.  
 > **Nota:** **Perdonar sanción** NO se hace aquí; está en *Admin → Usuarios Sancionados*.
 
-![IMG-02 — Usuarios (lista)](docs/img/IMG-02-usuarios-lista.png)  
+![IMG-02 — Usuarios (lista)](img/IMG-02-usuarios-lista.png)  
 *Gestión de cuentas y roles.*
 
 **Crear/Editar usuario**
@@ -51,10 +51,10 @@ Al entrar como **Admin** verás el **Dashboard** con tarjetas: **Préstamos del 
    - **Opcionales:** `segundoNombre`, `segundoApellido`, `password` (si lo dejas vacío, se usa **RUT** como contraseña inicial).
 3. Toca **Guardar** (o **Cancelar** para cerrar sin cambios).
 
-![IMG-03 — Crear usuario (modal)](docs/img/IMG-03-usuarios-crear.png)  
+![IMG-03 — Crear usuario (modal)](img/IMG-03-usuarios-crear.png)  
 *Formulario de alta con validaciones.*
 
-![IMG-04 — Campo curso para Alumno](docs/img/IMG-04-usuarios-curso-alumno.png)  
+![IMG-04 — Campo curso para Alumno](img/IMG-04-usuarios-curso-alumno.png)  
 *Campo `curso` obligatorio cuando el rol es Alumno.*
 
 **Editar / Eliminar**
@@ -64,7 +64,7 @@ Al entrar como **Admin** verás el **Dashboard** con tarjetas: **Préstamos del 
   - El sistema **impide** eliminar si el usuario tiene **préstamos en curso/atraso**.  
   - Si tiene **reservas pendientes**, al eliminarlo esas reservas se **liberan**.
 
-![IMG-05 — Confirmar eliminación de usuario](docs/img/IMG-05-usuarios-eliminar-confirm.png)  
+![IMG-05 — Confirmar eliminación de usuario](img/IMG-05-usuarios-eliminar-confirm.png)  
 *Confirmación segura; no permite eliminar con préstamos activos/atraso.*
 
 ---
@@ -81,10 +81,10 @@ Al entrar como **Admin** verás el **Dashboard** con tarjetas: **Préstamos del 
 3. Confirma con **Sí, perdonar** → el sistema quita la sanción y la lista se actualiza.  
 4. Si no deseas continuar, pulsa **Cancelar** en el modal.
 
-![IMG-06 — Usuarios sancionados](docs/img/IMG-06-sancionados-lista.png)  
+![IMG-06 — Usuarios sancionados](img/IMG-06-sancionados-lista.png)  
 *Vista dedicada a sanciones vigentes.*
 
-![IMG-07 — Perdonar sanción (modal)](docs/img/IMG-07-sancionados-perdon-modal.png)  
+![IMG-07 — Perdonar sanción (modal)](img/IMG-07-sancionados-perdon-modal.png)  
 *Único lugar del frontend para levantar sanciones.*
 
 ---
@@ -94,7 +94,7 @@ Al entrar como **Admin** verás el **Dashboard** con tarjetas: **Préstamos del 
 **Ruta:** *Admin → Libros*  
 **Para:** crear/editar **Libro** (base) y administrar sus **Ejemplares** (copias).
 
-![IMG-08 — Libros (lista)](docs/img/IMG-08-libros-lista.png)  
+![IMG-08 — Libros (lista)](img/IMG-08-libros-lista.png)  
 *Catálogo de libros con acciones.*
 
 **Crear libro**
@@ -107,7 +107,7 @@ Al entrar como **Admin** verás el **Dashboard** con tarjetas: **Préstamos del 
    - **Ejemplares iniciales:** `cantidadEjemplares` (si lo dejas vacío, **1**).
 3. Pulsa **Guardar** (o **Cancelar**).
 
-![IMG-09 — Crear libro (modal)](docs/img/IMG-09-libros-crear.png)  
+![IMG-09 — Crear libro (modal)](img/IMG-09-libros-crear.png)  
 *Alta de libro (campos obligatorios marcados).*
 
 **Ver / Editar / Borrar libro**
@@ -122,7 +122,7 @@ Al entrar como **Admin** verás el **Dashboard** con tarjetas: **Préstamos del 
 - **Eliminar copias:** en la lista, **Marcar para eliminar** copias específicas → **Guardar**.  
   - No se permite eliminar copias en estado `prestado` o `reservado`.
 
-![IMG-10 — Editar libro: ejemplares](docs/img/IMG-10-libros-editar-ejemplares.png)  
+![IMG-10 — Editar libro: ejemplares](img/IMG-10-libros-editar-ejemplares.png)  
 *Agregar copias y marcar para eliminar (si no están prestadas/reservadas).*
 
 **Estados de ejemplar:** `disponible`, `reservado`, `prestado`, `deteriorado`, `extraviado`.
@@ -134,7 +134,7 @@ Al entrar como **Admin** verás el **Dashboard** con tarjetas: **Préstamos del 
 **Ruta:** *Admin → Recursos CRA*  
 **Para:** crear/editar **Recurso** (base) y administrar **Instancias**.
 
-![IMG-11 — Recursos CRA (lista)](docs/img/IMG-11-recursos-lista.png)  
+![IMG-11 — Recursos CRA (lista)](img/IMG-11-recursos-lista.png)  
 *Catálogo de recursos no bibliográficos.*
 
 **Crear recurso**
@@ -147,7 +147,7 @@ Al entrar como **Admin** verás el **Dashboard** con tarjetas: **Préstamos del 
 3. Pulsa **Guardar** (se generan códigos internos, p. ej. `RBB-###` / `RBM-###`, según sede).  
 4. **Cancelar** cierra el modal sin cambios.
 
-![IMG-12 — Crear recurso (modal)](docs/img/IMG-12-recursos-crear.png)  
+![IMG-12 — Crear recurso (modal)](img/IMG-12-recursos-crear.png)  
 *Alta de recurso con sede y categoría.*
 
 **Editar / Instancias**
@@ -157,7 +157,7 @@ Al entrar como **Admin** verás el **Dashboard** con tarjetas: **Préstamos del 
 - **Eliminar instancias:** **Marcar para eliminar** → **Guardar**.  
   - No se permite eliminar si la instancia está `prestado` o `reservado`.
 
-![IMG-13 — Editar recurso: instancias](docs/img/IMG-13-recursos-editar-instancias.png)  
+![IMG-13 — Editar recurso: instancias](img/IMG-13-recursos-editar-instancias.png)  
 *Gestión de instancias.*
 
 **Estados de instancia:** `disponible`, `reservado`, `prestado`, `mantenimiento`.
@@ -173,7 +173,7 @@ Al entrar como **Admin** verás el **Dashboard** con tarjetas: **Préstamos del 
 - **Cancelar:** pulsa **Cancelar** → **Sí, cancelar**. La copia vuelve a `disponible`.  
 - **Expiración automática:** si pasan **2 días hábiles** sin confirmar, expira sola.
 
-![IMG-14 — Reservas pendientes](docs/img/IMG-14-reservas-pendientes.png)  
+![IMG-14 — Reservas pendientes](img/IMG-14-reservas-pendientes.png)  
 *Confirmación convierte en préstamo; cancelación libera la copia.*
 
 ---
@@ -183,7 +183,7 @@ Al entrar como **Admin** verás el **Dashboard** con tarjetas: **Préstamos del 
 **Ruta:** *Admin → Préstamos*  
 **Para:** crear, **renovar** y **devolver**.
 
-![IMG-15 — Préstamos (lista)](docs/img/IMG-15-prestamos-lista.png)  
+![IMG-15 — Préstamos (lista)](img/IMG-15-prestamos-lista.png)  
 *Gestión diaria de préstamos.*
 
 **Nuevo Préstamo** (modal **CreateLoanForm**)
@@ -194,7 +194,7 @@ Al entrar como **Admin** verás el **Dashboard** con tarjetas: **Préstamos del 
 4. Revisa que el sistema no muestre advertencias por **cupo**, **sanción** o **duplicado de base**.  
 5. Pulsa **Confirmar Préstamo** (o **Cancelar** para cerrar sin cambios).
 
-![IMG-16 — Nuevo Préstamo (modal)](docs/img/IMG-16-prestamos-crear-modal.png)  
+![IMG-16 — Nuevo Préstamo (modal)](img/IMG-16-prestamos-crear-modal.png)  
 *Selección de usuario e ítem con validaciones.*
 
 **Renovar** (modal **RenewLoanForm**)
@@ -203,7 +203,7 @@ Al entrar como **Admin** verás el **Dashboard** con tarjetas: **Préstamos del 
 2. Ingresa **días hábiles** a extender.  
 3. Pulsa **Renovar** (o **Cancelar**).
 
-![IMG-17 — Renovación de préstamo](docs/img/IMG-17-prestamos-renovar-modal.png)  
+![IMG-17 — Renovación de préstamo](img/IMG-17-prestamos-renovar-modal.png)  
 *Extensión de vencimiento si no hay conflicto.*
 
 **Devolver** (modal **ReturnLoanForm**)
@@ -213,7 +213,7 @@ Al entrar como **Admin** verás el **Dashboard** con tarjetas: **Préstamos del 
 3. (Opcional) Escribe **observaciones**.  
 4. Pulsa **Registrar devolución** (o **Cancelar**).
 
-![IMG-18 — Registrar devolución](docs/img/IMG-18-prestamos-devolver-modal.png)  
+![IMG-18 — Registrar devolución](img/IMG-18-prestamos-devolver-modal.png)  
 *Devolución y cambio de estado del ítem.*
 
 **Préstamos Atrasados**
@@ -221,7 +221,7 @@ Al entrar como **Admin** verás el **Dashboard** con tarjetas: **Préstamos del 
 **Ruta:** *Admin → Préstamos Atrasados*  
 Lista solo vencidos y muestra **días de atraso**. Permite priorizar y actuar (renovar/devolver) en cada fila.
 
-![IMG-19 — Préstamos atrasados](docs/img/IMG-19-prestamos-atrasados.png)  
+![IMG-19 — Préstamos atrasados](img/IMG-19-prestamos-atrasados.png)  
 *Priorización por vencimiento.*
 
 ---
@@ -235,7 +235,7 @@ Lista solo vencidos y muestra **días de atraso**. Permite priorizar y actuar (r
 - **Dar de baja:** pulsa **Dar de baja** → **Sí, dar de baja**.  
   - Si es la **última copia**, se habilita retirar el **título base**.
 
-![IMG-20 — Inventario en atención](docs/img/IMG-20-inventario-atencion.png)  
+![IMG-20 — Inventario en atención](img/IMG-20-inventario-atencion.png)  
 *Reintegrar o dar de baja copias.*
 
 ---
@@ -253,7 +253,7 @@ Lista solo vencidos y muestra **días de atraso**. Permite priorizar y actuar (r
 5. Revisa la **tarjeta de resultados**: cantidad **creada/omitida** y **errores por fila** (si existen).  
 6. Cierra con **Listo** o **Cerrar** (según tu UI).
 
-![IMG-21 — Importación (inicial)](docs/img/IMG-21-import-inicial.png)  
+![IMG-21 — Importación (inicial)](img/IMG-21-import-inicial.png)  
 *Descarga de plantilla y selección de archivo.*
 
 
@@ -275,7 +275,7 @@ Lista solo vencidos y muestra **días de atraso**. Permite priorizar y actuar (r
 2. Si hay disponibilidad, pulsa **Reservar** → confirma en el modal con **Sí, reservar**.  
 3. Verás la reserva en **Mis Reservas** con fecha de **expiración (2 días hábiles)**.
 
-![IMG-23 — Catálogo (Alumno)](docs/img/IMG-23-catalogo-alumno.png)  
+![IMG-23 — Catálogo (Alumno)](img/IMG-23-catalogo-alumno.png)  
 *Reserva disponible cuando hay ejemplares.*
 
 **Cancelar reserva**  
@@ -287,10 +287,10 @@ Lista solo vencidos y muestra **días de atraso**. Permite priorizar y actuar (r
 **Solicitar renovación**  
 - Contacta al **Admin** antes del vencimiento (él pulsa **Renovar** en su pantalla).
 
-![IMG-24 — Mis Reservas](docs/img/IMG-24-mis-reservas.png)  
+![IMG-24 — Mis Reservas](img/IMG-24-mis-reservas.png)  
 *Cancelar libera la copia si aún no se confirma.*
 
-![IMG-25 — Mis Préstamos](docs/img/IMG-25-mis-prestamos.png)  
+![IMG-25 — Mis Préstamos](img/IMG-25-mis-prestamos.png)  
 *Consulta de vencimientos y estado de préstamos.*
 
 > **Límites que te aplican (por defecto):** máx. **1** préstamo activo (**libros**). No puedes tener **dos copias del mismo libro** entre reserva y préstamo.
@@ -307,7 +307,7 @@ Lista solo vencidos y muestra **días de atraso**. Permite priorizar y actuar (r
 - **Cupos:** suelen ser **mayores** que los del alumno (definidos por el colegio).  
 - **No duplicar base:** no puedes tener dos copias del **mismo libro/recurso** simultáneamente (reserva+préstamo).
 
-![IMG-26 — Catálogo (Docente/Personal)](docs/img/IMG-26-catalogo-docente.png)  
+![IMG-26 — Catálogo (Docente/Personal)](img/IMG-26-catalogo-docente.png)  
 *Acceso a recursos CRA además de libros.*
 
 ---
@@ -317,7 +317,7 @@ Lista solo vencidos y muestra **días de atraso**. Permite priorizar y actuar (r
 - **Catálogo público:** puedes **buscar** y **ver detalles**, sin botones de acción.  
 - Para **reservar** o ver paneles personales, **inicia sesión**.
 
-![IMG-00 — Portada del sistema (público)](docs/img/IMG-00-portada-publica.png)  
+![IMG-00 — Portada del sistema (público)](img/IMG-00-portada-publica.png)  
 *Consulta sin iniciar sesión (solo lectura).*
 
 ---
