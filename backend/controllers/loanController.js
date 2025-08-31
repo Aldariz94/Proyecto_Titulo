@@ -172,19 +172,41 @@ exports.returnLoan = async (req, res) => {
     res.status(500).send("Error del servidor");
   }
 };
+
 exports.getAllLoans = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
-    const search = req.query.search || ''; // <-- Capturamos el término de búsqueda
+    const search = req.query.search || '';
+    const status = req.query.status || '';
 
     let query = {};
+    const andConditions = [];
+
+    // --- INICIO DE LA CORRECCIÓN ---
+    // 1. Lógica especial para manejar los estados dinámicos
+    if (status) {
+        if (status === 'atrasado') {
+            // Si se buscan atrasados, la consulta correcta es:
+            // estado 'enCurso' Y fecha de vencimiento pasada.
+            andConditions.push({ estado: 'enCurso' });
+            andConditions.push({ fechaVencimiento: { $lt: new Date() } });
+        } else if (status === 'enCurso') {
+            // Si se buscan "En Préstamo", nos aseguramos de excluir los atrasados:
+            // estado 'enCurso' Y fecha de vencimiento futura.
+            andConditions.push({ estado: 'enCurso' });
+            andConditions.push({ fechaVencimiento: { $gte: new Date() } });
+        } else {
+            // Para 'devuelto', la lógica es directa.
+            andConditions.push({ estado: status });
+        }
+    }
+    // --- FIN DE LA CORRECCIÓN ---
 
     if (search) {
         const searchRegex = new RegExp(search, 'i');
         
-        // Buscamos usuarios y ítems que coincidan
         const users = await User.find({ $or: [{ primerNombre: searchRegex }, { primerApellido: searchRegex }] }).select('_id');
         const books = await Book.find({ titulo: searchRegex }).select('_id');
         const resources = await ResourceCRA.find({ nombre: searchRegex }).select('_id');
@@ -196,20 +218,18 @@ exports.getAllLoans = async (req, res) => {
         const exemplars = await Exemplar.find({ libroId: { $in: bookIds } }).select('_id');
         const instances = await ResourceInstance.find({ resourceId: { $in: resourceIds } }).select('_id');
         
-        const exemplarIds = exemplars.map(e => e._id);
-        const instanceIds = instances.map(i => i._id);
+        const itemIds = [...exemplars.map(e => e._id), ...instances.map(i => i._id)];
 
-        query.$or = [
-            { usuarioId: { $in: userIds } },
-            { item: { $in: [...exemplarIds, ...instanceIds] } },
-        ];
-        
-        // Permitir buscar por estado directamente
-        if (['devuelto', 'atrasado'].includes(search.toLowerCase())) {
-            query.$or.push({ estado: search.toLowerCase() });
-        } else if (['en curso', 'en prestamo', 'prestamo'].includes(search.toLowerCase())) {
-            query.$or.push({ estado: 'enCurso' });
-        }
+        andConditions.push({
+            $or: [
+                { usuarioId: { $in: userIds } },
+                { item: { $in: itemIds } },
+            ]
+        });
+    }
+    
+    if (andConditions.length > 0) {
+        query = { $and: andConditions };
     }
 
     const totalLoans = await Loan.countDocuments(query);

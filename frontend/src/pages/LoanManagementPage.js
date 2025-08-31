@@ -14,24 +14,19 @@ const LoanManagementPage = () => {
     const [returningLoan, setReturningLoan] = useState(null);
     const { notification, showNotification } = useNotification();
 
-    // --- INICIO DE LA CORRECCIÓN ---
-
-    // 1. Añadimos estados para la búsqueda con "debounce"
     const [searchTerm, setSearchTerm] = useState('');
-    const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
-
+    const [statusFilter, setStatusFilter] = useState(''); // <-- 1. Estado para el filtro de estado
     const [currentPage, setCurrentPage] = useState(1);
     const [totalPages, setTotalPages] = useState(0);
 
-    // 2. Modificamos fetchLoans para que acepte el término de búsqueda
-    const fetchLoans = useCallback(async (page, search) => {
+    // 2. La función ahora acepta el filtro de estado
+    const fetchLoans = useCallback(async (page, search, status) => {
         try {
             setLoading(true);
             const params = new URLSearchParams({ page, limit: 10 });
-            if (search) {
-                params.append('search', search); // Se añade el parámetro de búsqueda
-            }
-            // La API de préstamos necesita ser actualizada para aceptar 'search'
+            if (search) params.append('search', search);
+            if (status) params.append('status', status); // <-- Se añade el estado a la petición
+            
             const response = await api.get(`/loans?${params.toString()}`);
             setLoans(response.data.docs);
             setTotalPages(response.data.totalPages);
@@ -43,41 +38,28 @@ const LoanManagementPage = () => {
         }
     }, [showNotification]);
 
-    // 3. Añadimos el efecto de "debounce" para no sobrecargar la API
+    // 3. Se añade 'statusFilter' a las dependencias de los hooks
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchTerm, statusFilter]);
+
     useEffect(() => {
         const timer = setTimeout(() => {
-            if (searchTerm !== debouncedSearchTerm) {
-                setCurrentPage(1); // Reiniciar a la página 1 en una nueva búsqueda
-                setDebouncedSearchTerm(searchTerm);
-            }
-        }, 500); // Espera 500ms después de que el usuario deja de escribir
+            fetchLoans(currentPage, searchTerm, statusFilter);
+        }, 300);
         return () => clearTimeout(timer);
-    }, [searchTerm, debouncedSearchTerm]);
+    }, [currentPage, searchTerm, statusFilter, fetchLoans]);
 
-
-    // 4. Actualizamos el efecto principal para que reaccione a los cambios de búsqueda
-    useEffect(() => {
-        fetchLoans(currentPage, debouncedSearchTerm);
-    }, [currentPage, debouncedSearchTerm, fetchLoans]);
-
-    // 5. Eliminamos el 'useMemo' para el filtrado en el cliente. Ya no es necesario.
-    
-    // --- FIN DE LA CORRECCIÓN ---
-
+    // ... (El resto de las funciones como handleCreateLoan, etc., se actualizan para pasar los filtros)
     const handleCreateLoan = async (loanData) => {
         try {
             await api.post('/loans', loanData);
             setIsCreateModalOpen(false);
-            fetchLoans(1, debouncedSearchTerm); // Refrescar desde la página 1 con el filtro actual
+            fetchLoans(1, searchTerm, statusFilter);
             showNotification('Préstamo creado exitosamente.');
         } catch (err) {
             showNotification(err.response?.data?.msg || 'Error al crear el préstamo.', 'error');
         }
-    };
-
-    const handleOpenRenewModal = (loanId) => {
-        setRenewingLoanId(loanId);
-        setIsRenewModalOpen(true);
     };
 
     const handleRenewLoan = async (days) => {
@@ -85,16 +67,11 @@ const LoanManagementPage = () => {
             await api.put(`/loans/${renewingLoanId}/renew`, { days });
             setIsRenewModalOpen(false);
             setRenewingLoanId(null);
-            fetchLoans(currentPage, debouncedSearchTerm);
+            fetchLoans(currentPage, searchTerm, statusFilter);
             showNotification('Préstamo renovado exitosamente.');
         } catch (err) {
             showNotification(err.response?.data?.msg || 'Error al renovar el préstamo.', 'error');
         }
-    };
-
-    const handleOpenReturnModal = (loan) => {
-        setReturningLoan(loan);
-        setIsReturnModalOpen(true);
     };
 
     const handleReturnLoan = async (payload) => {
@@ -103,11 +80,21 @@ const LoanManagementPage = () => {
             await api.post(`/loans/return/${returningLoan._id}`, payload);
             setIsReturnModalOpen(false);
             setReturningLoan(null);
-            fetchLoans(currentPage, debouncedSearchTerm);
+            fetchLoans(currentPage, searchTerm, statusFilter);
             showNotification('Devolución procesada exitosamente.');
         } catch (err) {
             showNotification(err.response?.data?.msg || 'Error al procesar la devolución.', 'error');
         }
+    };
+
+    const handleOpenRenewModal = (loanId) => {
+        setRenewingLoanId(loanId);
+        setIsRenewModalOpen(true);
+    };
+
+    const handleOpenReturnModal = (loan) => {
+        setReturningLoan(loan);
+        setIsReturnModalOpen(true);
     };
 
     return (
@@ -115,8 +102,25 @@ const LoanManagementPage = () => {
             <Notification {...notification} />
             <div className="flex flex-col md:flex-row items-center justify-between gap-4">
                 <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Gestión de Préstamos</h1>
-                <div className="flex items-center gap-4">
-                    <input type="text" placeholder="Buscar por usuario, ítem, estado..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full md:w-64 px-3 py-2 border rounded-md dark:bg-zinc-700 dark:border-zinc-600 dark:text-white" />
+                <div className="flex items-center gap-4 w-full md:w-auto">
+                    {/* 4. Interfaz de filtros actualizada */}
+                    <input 
+                        type="text" 
+                        placeholder="Buscar por usuario o ítem..." 
+                        value={searchTerm} 
+                        onChange={(e) => setSearchTerm(e.target.value)} 
+                        className="w-full px-3 py-2 border rounded-md dark:bg-zinc-700 dark:border-zinc-600 dark:text-white" 
+                    />
+                    <select
+                        value={statusFilter}
+                        onChange={(e) => setStatusFilter(e.target.value)}
+                        className="w-full px-3 py-2 border rounded-md dark:bg-zinc-700 dark:border-zinc-600 dark:text-white"
+                    >
+                        <option value="">Todos los Estados</option>
+                        <option value="enCurso">En Préstamo</option>
+                        <option value="devuelto">Devuelto</option>
+                        <option value="atrasado">Atrasado</option>
+                    </select>
                     <button onClick={() => setIsCreateModalOpen(true)} className="flex items-center px-4 py-2 font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 whitespace-nowrap">
                         <PlusIcon className="w-5 h-5 mr-2" />
                         Crear Préstamo
@@ -152,7 +156,6 @@ const LoanManagementPage = () => {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-200 dark:divide-zinc-700">
-                            {/* Se renderiza directamente el estado 'loans' */}
                             {loans.map(loan => (
                                 <tr key={loan._id} className="hover:bg-gray-100 dark:hover:bg-zinc-600">
                                     <td className="px-6 py-4 whitespace-nowrap text-gray-900 dark:text-white">
