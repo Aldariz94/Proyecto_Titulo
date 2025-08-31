@@ -4,6 +4,8 @@ const User = require('../models/User');
 const Exemplar = require('../models/Exemplar');
 const ResourceInstance = require('../models/ResourceInstance');
 const Loan = require('../models/Loan');
+const Book = require('../models/Book');
+const ResourceCRA = require('../models/ResourceCRA');
 const { addBusinessDays } = require('../utils/dateUtils');
 const { checkBorrowingLimits } = require('../utils/validationUtils'); // <-- Se importa el nuevo ayudante
 
@@ -49,14 +51,36 @@ exports.createReservation = async (req, res) => {
     }
 };
 
-// --- INICIO DE LA CORRECCIÓN ---
 exports.getActiveReservations = async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 10;
         const skip = (page - 1) * limit;
+        const search = req.query.search || '';
 
-        const query = { estado: 'pendiente' };
+        let query = { estado: 'pendiente' };
+
+        if (search) {
+            const searchRegex = new RegExp(search, 'i');
+            
+            const users = await User.find({ $or: [{ primerNombre: searchRegex }, { primerApellido: searchRegex }] }).select('_id');
+            const books = await Book.find({ titulo: searchRegex }).select('_id');
+            const resources = await ResourceCRA.find({ nombre: searchRegex }).select('_id');
+
+            const userIds = users.map(u => u._id);
+            const bookIds = books.map(b => b._id);
+            const resourceIds = resources.map(r => r._id);
+
+            const exemplars = await Exemplar.find({ libroId: { $in: bookIds } }).select('_id');
+            const instances = await ResourceInstance.find({ resourceId: { $in: resourceIds } }).select('_id');
+            
+            const itemIds = [...exemplars.map(e => e._id), ...instances.map(i => i._id)];
+
+            query.$or = [
+                { usuarioId: { $in: userIds } },
+                { item: { $in: itemIds } },
+            ];
+        }
 
         const totalReservations = await Reservation.countDocuments(query);
         const totalPages = Math.ceil(totalReservations / limit);
@@ -95,7 +119,6 @@ exports.getActiveReservations = async (req, res) => {
         res.status(500).send('Error del servidor');
     }
 };
-// --- FIN DE LA CORRECCIÓN ---
 
 // Confirmar el retiro de una reserva
 exports.confirmReservation = async (req, res) => {

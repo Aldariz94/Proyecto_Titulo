@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import api from '../services/api';
 import { Modal, CreateLoanForm, Notification } from '../components';
 import { useNotification } from '../hooks';
@@ -7,7 +7,6 @@ import { PlusIcon } from '@heroicons/react/24/outline';
 const ReservationsPage = () => {
     const [reservations, setReservations] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [searchTerm, setSearchTerm] = useState('');
     const { notification, showNotification } = useNotification();
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     
@@ -15,13 +14,19 @@ const ReservationsPage = () => {
     const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
     const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
     
+    const [searchTerm, setSearchTerm] = useState('');
+    const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
     const [totalPages, setTotalPages] = useState(0);
 
-    const fetchReservations = useCallback(async (page) => {
+    const fetchReservations = useCallback(async (page, search) => {
         try {
             setLoading(true);
-            const response = await api.get(`/reservations?page=${page}&limit=10`);
+            const params = new URLSearchParams({ page, limit: 10 });
+            if (search) {
+                params.append('search', search);
+            }
+            const response = await api.get(`/reservations?${params.toString()}`);
             setReservations(response.data.docs);
             setTotalPages(response.data.totalPages);
             setCurrentPage(response.data.page);
@@ -33,27 +38,24 @@ const ReservationsPage = () => {
     }, [showNotification]);
 
     useEffect(() => {
-        fetchReservations(currentPage);
-    }, [currentPage, fetchReservations]);
+        const timer = setTimeout(() => {
+            if (searchTerm !== debouncedSearchTerm) {
+                setCurrentPage(1);
+                setDebouncedSearchTerm(searchTerm);
+            }
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [searchTerm, debouncedSearchTerm]);
 
-    const filteredReservations = useMemo(() => {
-        const cleanReservations = reservations.filter(res => res && res.usuarioId);
-
-        if (!searchTerm) return cleanReservations;
-        
-        const lowerCaseSearch = searchTerm.toLowerCase();
-        return cleanReservations.filter(res => {
-            const userName = `${res.usuarioId.primerNombre} ${res.usuarioId.primerApellido}`.toLowerCase();
-            const itemName = (res.itemDetails?.name || '').toLowerCase();
-            return userName.includes(lowerCaseSearch) || itemName.includes(lowerCaseSearch);
-        });
-    }, [reservations, searchTerm]);
+    useEffect(() => {
+        fetchReservations(currentPage, debouncedSearchTerm);
+    }, [currentPage, debouncedSearchTerm, fetchReservations]);
 
     const handleCreateReservation = async (reservationData) => {
         try {
             await api.post('/reservations', reservationData);
             showNotification('Reserva manual creada exitosamente.');
-            fetchReservations(1);
+            fetchReservations(1, debouncedSearchTerm);
         } catch (err) {
             showNotification(err.response?.data?.msg || 'Error al crear la reserva.', 'error');
         } finally {
@@ -84,9 +86,9 @@ const ReservationsPage = () => {
             await api.post(`/reservations/${selectedReservation._id}/confirm`);
             showNotification('Reserva confirmada y préstamo creado.');
             if (reservations.length === 1 && currentPage > 1) {
-                fetchReservations(currentPage - 1);
+                fetchReservations(currentPage - 1, debouncedSearchTerm);
             } else {
-                fetchReservations(currentPage);
+                fetchReservations(currentPage, debouncedSearchTerm);
             }
         } catch (err) {
             showNotification(err.response?.data?.msg || 'Error al confirmar la reserva.', 'error');
@@ -101,9 +103,9 @@ const ReservationsPage = () => {
             await api.post(`/reservations/${selectedReservation._id}/cancel`);
             showNotification('Reserva cancelada.');
             if (reservations.length === 1 && currentPage > 1) {
-                fetchReservations(currentPage - 1);
+                fetchReservations(currentPage - 1, debouncedSearchTerm);
             } else {
-                fetchReservations(currentPage);
+                fetchReservations(currentPage, debouncedSearchTerm);
             }
         } catch (err) {
             showNotification(err.response?.data?.msg || 'Error al cancelar la reserva.', 'error');
@@ -118,7 +120,7 @@ const ReservationsPage = () => {
             <div className="flex flex-col md:flex-row items-center justify-between gap-4">
                 <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Gestión de Reservas</h1>
                 <div className="flex items-center gap-4">
-                    <input type="text" placeholder="Buscar..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full md:w-64 px-3 py-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
+                    <input type="text" placeholder="Buscar por usuario o ítem..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full md:w-64 px-3 py-2 border rounded-md dark:bg-zinc-700 dark:border-zinc-600 dark:text-white" />
                      <button onClick={() => setIsCreateModalOpen(true)} className="flex items-center px-4 py-2 font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 whitespace-nowrap">
                         <PlusIcon className="w-5 h-5 mr-2" />
                         Crear Reserva
@@ -168,31 +170,31 @@ const ReservationsPage = () => {
                 {loading ? (
                     <div className="p-6 text-center dark:text-gray-300">Cargando reservas...</div>
                 ) : (
-                    <table className="min-w-full text-sm divide-y divide-gray-200 dark:divide-gray-700 responsive-table">
+                    <table className="min-w-full text-sm divide-y divide-gray-200 dark:divide-zinc-700 responsive-table">
                         <thead className="bg-gray-50 dark:bg-zinc-700">
                             <tr>
-                                <th className="px-6 py-3 text-left font-medium text-gray-500 uppercase dark:text-gray-300">Usuario</th>
-                                <th className="px-6 py-3 text-left font-medium text-gray-500 uppercase dark:text-gray-300">Ítem</th>
-                                <th className="px-6 py-3 text-left font-medium text-gray-500 uppercase dark:text-gray-300">Fecha Límite de Retiro</th>
-                                <th className="px-6 py-3 text-left font-medium text-gray-500 uppercase dark:text-gray-300">Estado</th>
-                                <th className="px-6 py-3 text-left font-medium text-gray-500 uppercase dark:text-gray-300">Acciones</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-300">Usuario</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-300">Ítem</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-300">Fecha Límite de Retiro</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-300">Estado</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-300">Acciones</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                            {filteredReservations.length > 0 ? (
-                                filteredReservations.map(res => (
-                                    <tr key={res._id} className="hover:bg-gray-100 dark:hover:bg-gray-600">
-                                        <td className="px-6 py-4 text-gray-900 dark:text-white">{res.usuarioId ? `${res.usuarioId.primerNombre} ${res.usuarioId.primerApellido}` : 'Usuario Eliminado'}</td>
-                                        <td className="px-6 py-4 text-gray-500 dark:text-gray-300">{res.itemDetails?.name || 'N/A'}</td>
-                                        <td className="px-6 py-4 text-gray-500 dark:text-gray-300">
+                        <tbody className="divide-y divide-gray-200 dark:divide-zinc-700">
+                            {reservations.length > 0 ? (
+                                reservations.map(res => (
+                                    <tr key={res._id} className="hover:bg-gray-100 dark:hover:bg-zinc-600">
+                                        <td className="px-6 py-4 whitespace-nowrap text-gray-900 dark:text-white">{res.usuarioId ? `${res.usuarioId.primerNombre} ${res.usuarioId.primerApellido}` : 'Usuario Eliminado'}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-gray-500 dark:text-gray-300">{res.itemDetails?.name || 'N/A'}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-gray-500 dark:text-gray-300">
                                             {res.expiraEn ? new Date(res.expiraEn).toLocaleDateString('es-CL') : 'N/A'}
                                         </td>
-                                        <td className="px-6 py-4">
+                                        <td className="px-6 py-4 whitespace-nowrap">
                                             <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full capitalize bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-300">
                                                 {res.estado}
                                             </span>
                                         </td>
-                                        <td className="px-6 py-4 text-sm font-medium space-x-4">
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-4">
                                             <button onClick={() => handleOpenConfirmModal(res)} className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300">Confirmar Retiro</button>
                                             <button onClick={() => handleOpenCancelModal(res)} className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300">Cancelar Reserva</button>
                                         </td>
@@ -215,17 +217,17 @@ const ReservationsPage = () => {
                     <button
                         onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                         disabled={currentPage === 1}
-                        className="px-3 py-1 mr-2 text-gray-700 bg-gray-200 rounded-md dark:bg-gray-700 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="px-3 py-1 mr-2 text-gray-700 bg-gray-200 rounded-md dark:bg-zinc-700 dark:text-zinc-300 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         Anterior
                     </button>
-                    <span className="text-gray-700 dark:text-gray-300">
+                    <span className="text-gray-700 dark:text-zinc-300">
                         Página {currentPage} de {totalPages}
                     </span>
                     <button
                         onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                         disabled={currentPage === totalPages}
-                        className="px-3 py-1 ml-2 text-gray-700 bg-gray-200 rounded-md dark:bg-gray-700 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="px-3 py-1 ml-2 text-gray-700 bg-gray-200 rounded-md dark:bg-zinc-700 dark:text-zinc-300 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         Siguiente
                     </button>

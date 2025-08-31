@@ -5,7 +5,8 @@ const Exemplar = require("../models/Exemplar");
 const ResourceInstance = require("../models/ResourceInstance");
 const { addBusinessDays } = require("../utils/dateUtils");
 const { checkBorrowingLimits } = require("../utils/validationUtils"); // <-- Se importa el nuevo ayudante
-
+const Book = require('../models/Book');
+const ResourceCRA = require('../models/ResourceCRA');
 /**
  * --- NUEVA FUNCIÓN AUXILIAR ---
  * Formatea una lista de préstamos, poblando los detalles del ítem
@@ -171,25 +172,56 @@ exports.returnLoan = async (req, res) => {
     res.status(500).send("Error del servidor");
   }
 };
-
-// --- INICIO DE LA MODIFICACIÓN ---
 exports.getAllLoans = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
+    const search = req.query.search || ''; // <-- Capturamos el término de búsqueda
 
-    const totalLoans = await Loan.countDocuments();
+    let query = {};
+
+    if (search) {
+        const searchRegex = new RegExp(search, 'i');
+        
+        // Buscamos usuarios y ítems que coincidan
+        const users = await User.find({ $or: [{ primerNombre: searchRegex }, { primerApellido: searchRegex }] }).select('_id');
+        const books = await Book.find({ titulo: searchRegex }).select('_id');
+        const resources = await ResourceCRA.find({ nombre: searchRegex }).select('_id');
+
+        const userIds = users.map(u => u._id);
+        const bookIds = books.map(b => b._id);
+        const resourceIds = resources.map(r => r._id);
+
+        const exemplars = await Exemplar.find({ libroId: { $in: bookIds } }).select('_id');
+        const instances = await ResourceInstance.find({ resourceId: { $in: resourceIds } }).select('_id');
+        
+        const exemplarIds = exemplars.map(e => e._id);
+        const instanceIds = instances.map(i => i._id);
+
+        query.$or = [
+            { usuarioId: { $in: userIds } },
+            { item: { $in: [...exemplarIds, ...instanceIds] } },
+        ];
+        
+        // Permitir buscar por estado directamente
+        if (['devuelto', 'atrasado'].includes(search.toLowerCase())) {
+            query.$or.push({ estado: search.toLowerCase() });
+        } else if (['en curso', 'en prestamo', 'prestamo'].includes(search.toLowerCase())) {
+            query.$or.push({ estado: 'enCurso' });
+        }
+    }
+
+    const totalLoans = await Loan.countDocuments(query);
     const totalPages = Math.ceil(totalLoans / limit);
 
-    const loans = await Loan.find()
+    const loans = await Loan.find(query)
       .populate("usuarioId", "primerNombre primerApellido")
       .sort({ fechaInicio: -1 })
       .skip(skip)
       .limit(limit)
-      .lean(); // .lean() es importante para que podamos modificar el objeto
+      .lean();
 
-    // Usamos la nueva función auxiliar para formatear y verificar el estado
     const formattedLoans = await formatAndCheckLoans(loans);
 
     res.json({
@@ -203,7 +235,6 @@ exports.getAllLoans = async (req, res) => {
     res.status(500).send("Error del servidor");
   }
 };
-// --- FIN DE LA MODIFICACIÓN ---
 
 exports.getLoansByUser = async (req, res) => {
   if (!mongoose.Types.ObjectId.isValid(req.params.userId)) {
@@ -277,31 +308,56 @@ exports.getMyLoans = async (req, res) => {
   }
 };
 
-// @route   GET api/loans/overdue
-// @desc    Obtener todos los préstamos actualmente atrasados
-// @access  Private (Admin)
 exports.getOverdueLoans = async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 10;
         const skip = (page - 1) * limit;
+        const search = req.query.search || ''; // <-- Capturamos el término de búsqueda
 
-        const overdueQuery = {
+        // Query base para préstamos atrasados
+        let overdueQuery = {
             estado: 'enCurso',
             fechaVencimiento: { $lt: new Date() }
         };
+
+        // Si hay un término de búsqueda, lo incorporamos
+        if (search) {
+            const searchRegex = new RegExp(search, 'i');
+            
+            const users = await User.find({ $or: [{ primerNombre: searchRegex }, { primerApellido: searchRegex }] }).select('_id');
+            const books = await Book.find({ titulo: searchRegex }).select('_id');
+            const resources = await ResourceCRA.find({ nombre: searchRegex }).select('_id');
+
+            const userIds = users.map(u => u._id);
+            const bookIds = books.map(b => b._id);
+            const resourceIds = resources.map(r => r._id);
+
+            const exemplars = await Exemplar.find({ libroId: { $in: bookIds } }).select('_id');
+            const instances = await ResourceInstance.find({ resourceId: { $in: resourceIds } }).select('_id');
+            
+            const itemIds = [...exemplars.map(e => e._id), ...instances.map(i => i._id)];
+
+            // Combinamos la búsqueda con la condición de atrasado
+            overdueQuery = {
+                ...overdueQuery,
+                $or: [
+                    { usuarioId: { $in: userIds } },
+                    { item: { $in: itemIds } },
+                ]
+            };
+        }
 
         const totalDocs = await Loan.countDocuments(overdueQuery);
         const totalPages = Math.ceil(totalDocs / limit);
 
         const loans = await Loan.find(overdueQuery)
             .populate('usuarioId', 'primerNombre primerApellido rut')
-            .sort({ fechaVencimiento: 1 }) // Ordenar por los más antiguos primero
+            .sort({ fechaVencimiento: 1 })
             .skip(skip)
             .limit(limit)
             .lean();
 
-        // Esta es la función auxiliar que ya creamos en la corrección anterior
         const formattedLoans = await formatAndCheckLoans(loans);
 
         res.json({
