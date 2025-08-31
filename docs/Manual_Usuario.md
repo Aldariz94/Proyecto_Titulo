@@ -54,8 +54,6 @@ Al entrar como **Admin** verás el **Dashboard** con tarjetas: **Préstamos del 
 
 ![IMG-03 — Crear usuario (modal)](img/IMG-03-usuarios-crear.png)  
 *Formulario de alta con validaciones.*
-
-![IMG-04 — Campo curso para Alumno](img/IMG-04-usuarios-curso-alumno.png)  
 *Campo `curso` obligatorio cuando el rol es Alumno.*
 
 **Editar / Eliminar**
