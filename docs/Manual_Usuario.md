@@ -345,8 +345,4 @@ Lista solo vencidos y muestra **días de atraso**. Permite priorizar y actuar (r
 
 ---
 
-## 7) Consejos de operación
-
-- **Admin:** abre con **Dashboard**, actúa en **Préstamos Atrasados** y **Usuarios Sancionados**, revisa **Inventario → Atención**, y usa **Reportes** al cierre.  
-- **Usuarios (alumno/docente/personal):** reserva solo si vas a retirar; usa **Cancelar** si te arrepientes; pide **Renovación** con tiempo; **devuelve puntual**.  
 - **Todos:** si ocurre un problema, anota **pantalla**, **acción** y **hora** y avisa a la biblioteca.
