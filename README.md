@@ -263,10 +263,6 @@ yarn start     # http://localhost:3000
 
 > Colección y environments ya listos para importar:
 
-- **Collection**: [Postman_Proyecto_Titulo_collection.json](sandbox:/mnt/data/Postman_Proyecto_Titulo_collection.json)  
-- **Environment (local)**: [Postman_Proyecto_Titulo_environment.json](sandbox:/mnt/data/Postman_Proyecto_Titulo_environment.json)  
-- **Environment (producción)**: [Postman_Proyecto_Titulo_environment_prod.json](sandbox:/mnt/data/Postman_Proyecto_Titulo_environment_prod.json)
-
 ### Flujos sugeridos (resumen)
 0. **Health** → `GET /api/health`  
 1. **Login (admin)** → `POST /api/auth/login` → guarda `{{TOKEN}}`  
