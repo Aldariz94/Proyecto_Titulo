@@ -9,6 +9,9 @@ exports.generateLoanReport = async (req, res) => {
     try {
         const { startDate, endDate, status, course, bookId, userId, includeOrphaned = 'true' } = req.query;
         let { role } = req.query;
+        
+        // Verificamos si la petición es para una exportación
+        const isExport = req.query.export === 'true';
 
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 15;
@@ -26,7 +29,6 @@ exports.generateLoanReport = async (req, res) => {
         if (bookId && mongoose.Types.ObjectId.isValid(bookId)) {
             const exemplars = await Exemplar.find({ libroId: bookId }).select('_id');
             const exemplarIds = exemplars.map(ex => ex._id);
-
             if (exemplarIds.length > 0) {
                 query.item = { $in: exemplarIds };
                 query.itemModel = 'Exemplar';
@@ -73,12 +75,16 @@ exports.generateLoanReport = async (req, res) => {
         const totalDocs = await Loan.countDocuments(query);
         const totalPages = Math.ceil(totalDocs / limit);
 
-        const loans = await Loan.find(query)
+        let loansQuery = Loan.find(query)
             .populate('usuarioId', 'primerNombre primerApellido rut curso rol')
-            .sort({ fechaInicio: -1, _id: 1 })
-            .skip(skip)
-            .limit(limit)
-            .lean();
+            .sort({ fechaInicio: -1, _id: 1 });
+
+        // Aplicamos paginación solo si NO es una exportación
+        if (!isExport) {
+            loansQuery = loansQuery.skip(skip).limit(limit);
+        }
+
+        const loans = await loansQuery.lean();
 
         let formattedLoans = await Promise.all(loans.map(async (loan) => {
             let itemDetails = { titulo: 'Ítem Eliminado', nombre: 'Ítem Eliminado' };

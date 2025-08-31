@@ -1,4 +1,4 @@
-# 🎓 Proyecto de Título: Biblioteca Escolar CRA – Project Sophia
+# 🎓 Proyecto de Título: Biblioteca Escolar CRA
 
 &#x20;  &#x20;
 
@@ -189,6 +189,38 @@ El repositorio está organizado en dos carpetas principales: `backend` y `fronte
 | POST   | `/api/reservations`        | Crear reserva                         | Autenticado |
 | GET    | `/api/dashboard/stats`     | Obtener estadísticas del dashboard    | Admin       |
 | GET    | `/api/inventory/attention` | Ítems que requieren mantenimiento     | Admin       |
+
+---
+
+## 🌱 Script de Seeding para Datos de Prueba
+
+Este proyecto incluye un script de *seeding* (`backend/seed_transactions.js`) diseñado para poblar la base de datos con un historial de transacciones realista, ideal para demostraciones y pruebas.
+
+⚠️ **Importante:** Cada vez que se ejecuta, este script **borra todos los préstamos, reservas y sanciones existentes** para crear un nuevo conjunto de datos de prueba desde cero.
+
+### Funcionalidades del Script
+
+El script simula la actividad de la biblioteca y genera automáticamente:
+
+* Un historial de **préstamos ya devueltos**.
+* **Usuarios Sancionados** (calculado a partir de un porcentaje de devoluciones con atraso).
+* **Préstamos actualmente atrasados** para poblar la vista correspondiente.
+* **Préstamos en curso** que aún no han vencido.
+* Ítems en estado `deteriorado`, `extraviado` o `mantenimiento` para la página de **Mantenimiento de Inventario**.
+* **Reservas activas** para diferentes usuarios.
+
+### ¿Cómo Ejecutar el Script?
+
+1.  **Prerrequisito:** Asegúrate de que tu base de datos ya contenga **usuarios, libros y recursos**. Puedes usar la funcionalidad de **Importación Masiva** para esto primero.
+2.  Abre una terminal y navega a la carpeta del backend:
+    ```bash
+    cd backend
+    ```
+3.  Ejecuta el script con el siguiente comando:
+    ```bash
+    node seed_transactions.js
+    ```
+4.  Espera a que el script termine. Verás mensajes de progreso en la consola. Una vez que finalice, tu aplicación tendrá un historial de datos completo y listo para la demostración.
 
 ---
 

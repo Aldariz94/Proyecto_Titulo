@@ -21,6 +21,7 @@ const ReportsPage = () => {
     const { user } = useAuth();
 
     const [includeOrphaned, setIncludeOrphaned] = useState(false);
+    const [isExporting, setIsExporting] = useState(false);
 
     const [studentSearch, setStudentSearch] = useState('');
     const [studentResults, setStudentResults] = useState([]);
@@ -48,14 +49,6 @@ const ReportsPage = () => {
     const handleFilterChange = (e) => {
         const { name, value } = e.target;
         setFilters(prev => ({ ...prev, [name]: value }));
-
-        if (name === 'role') {
-            setSelectedStudent(null);
-            setStudentSearch('');
-            if (value === 'profesor') {
-                setFilters(prev => ({ ...prev, course: '' }));
-            }
-        }
     };
 
     const handleBookSearch = async (e) => {
@@ -105,13 +98,11 @@ const ReportsPage = () => {
             if (filters.course) params.append('course', filters.course);
             if (selectedBook) params.append('bookId', selectedBook._id);
             if (filters.role) params.append('role', filters.role);
-
             if (selectedStudent) {
                 params.delete('role');
                 params.delete('course');
                 params.append('userId', selectedStudent._id);
             }
-            
             params.append('includeOrphaned', includeOrphaned);
             params.append('page', pageToFetch);
             params.append('limit', 15);
@@ -121,7 +112,7 @@ const ReportsPage = () => {
             setTotalPages(response.data.totalPages);
             setCurrentPage(response.data.page);
 
-            if(response.data.docs.length === 0 && pageToFetch === 1) {
+            if (response.data.docs.length === 0 && pageToFetch === 1) {
                 showNotification("No se encontraron resultados para los filtros aplicados.", "error");
             }
         } catch (err) {
@@ -131,33 +122,64 @@ const ReportsPage = () => {
         }
     };
 
-    const handleExportPDF = () => {
-        const doc = new jsPDF();
-        doc.text("Reporte de Préstamos - Biblioteca Escolar", 14, 16);
-        
-        const tableColumn = ["Usuario", "Ítem Prestado", "Fecha Préstamo", "Vencimiento", "Estado"];
-        const tableRows = reportData.map(loan => [
-            loan.usuarioId ? `${loan.usuarioId.primerNombre} ${loan.usuarioId.primerApellido}` : 'Usuario Eliminado',
-            loan.itemDetails?.titulo || loan.itemDetails?.nombre || 'Ítem Eliminado',
-            new Date(loan.fechaInicio).toLocaleDateString('es-CL'),
-            new Date(loan.fechaVencimiento).toLocaleDateString('es-CL'),
-            loan.estado === 'enCurso' ? 'En Préstamo' : loan.estado,
-        ]);
+    const handleExportPDF = async () => {
+        setIsExporting(true);
+        showNotification("Preparando el reporte completo, esto puede tardar unos segundos...", "success");
 
-        autoTable(doc, {
-            head: [tableColumn],
-            body: tableRows,
-            startY: 20,
-        });
+        try {
+            const params = new URLSearchParams();
+            if (filters.startDate) params.append('startDate', filters.startDate);
+            if (filters.endDate) params.append('endDate', filters.endDate);
+            if (filters.status) params.append('status', filters.status);
+            if (filters.course) params.append('course', filters.course);
+            if (selectedBook) params.append('bookId', selectedBook._id);
+            if (filters.role) params.append('role', filters.role);
+            if (selectedStudent) {
+                params.delete('role');
+                params.delete('course');
+                params.append('userId', selectedStudent._id);
+            }
+            params.append('includeOrphaned', includeOrphaned);
+            params.append('export', 'true');
 
-        const date = new Date().toISOString().split('T')[0];
-        doc.save(`Reporte_Prestamos_${date}.pdf`);
+            const response = await api.get(`/reports/loans?${params.toString()}`);
+            const allReportData = response.data.docs;
+
+            if (allReportData.length === 0) {
+                showNotification("No hay datos para exportar con los filtros actuales.", "error");
+                return;
+            }
+
+            const doc = new jsPDF();
+            doc.text("Reporte de Préstamos - Biblioteca Escolar", 14, 16);
+            
+            const tableColumn = ["Usuario", "Ítem Prestado", "Fecha Préstamo", "Vencimiento", "Estado"];
+            const tableRows = allReportData.map(loan => [
+                loan.usuarioId ? `${loan.usuarioId.primerNombre} ${loan.usuarioId.primerApellido}` : 'Usuario Eliminado',
+                loan.itemDetails?.titulo || loan.itemDetails?.nombre || 'Ítem Eliminado',
+                new Date(loan.fechaInicio).toLocaleDateString('es-CL'),
+                new Date(loan.fechaVencimiento).toLocaleDateString('es-CL'),
+                loan.estado === 'enCurso' ? 'En Préstamo' : loan.estado,
+            ]);
+
+            autoTable(doc, {
+                head: [tableColumn],
+                body: tableRows,
+                startY: 20,
+            });
+
+            const date = new Date().toISOString().split('T')[0];
+            doc.save(`Reporte_Prestamos_${date}.pdf`);
+        } catch (err) {
+            showNotification('Error al exportar el reporte a PDF.', 'error');
+        } finally {
+            setIsExporting(false);
+        }
     };
-    
+
     useEffect(() => {
         setCurrentPage(1);
     }, [filters, selectedBook, selectedStudent, includeOrphaned]);
-
 
     return (
         <div>
@@ -274,8 +296,12 @@ const ReportsPage = () => {
             {reportData.length > 0 && (
                 <div className="mt-8 flex justify-between items-center">
                     <h2 className="text-2xl font-bold text-gray-800 dark:text-white">Resultados del Reporte</h2>
-                    <button onClick={handleExportPDF} className="px-4 py-2 font-medium text-white bg-green-600 rounded-md hover:bg-green-700">
-                        Exportar a PDF
+                    <button 
+                        onClick={handleExportPDF} 
+                        className="px-4 py-2 font-medium text-white bg-green-600 rounded-md hover:bg-green-700 disabled:bg-green-400"
+                        disabled={isExporting}
+                    >
+                        {isExporting ? 'Exportando...' : 'Exportar a PDF'}
                     </button>
                 </div>
             )}
