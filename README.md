@@ -473,13 +473,56 @@ pm2 save && pm2 startup
 
 ---
 
-## 🧭 Roadmap y Buenas Prácticas
+## 🧭 Roadmap
 
-- Consolidar reglas en `utils/validationUtils.js` y cubrir con tests.
-- Tests E2E (Playwright/Cypress) para flujos críticos.
-- ESLint + Prettier + Husky (pre-commit).
-- `helmet` + `compression` en prod; `morgan` en dev.
-- Backups: `mongodump` cron o snapshots Atlas.
+- Lista de espera (waitlist) por título/base
+Cuando no haya ejemplares/instancias disponibles, permitir unirse a una cola con posición. Al liberarse stock, se crea una reserva automática para la persona en primer lugar con expiración corta.
+Impl.: modelo WaitlistEntry (baseModel/baseId, usuario, posición, estado, expiración), disparadores en devolución/alta de ejemplar, notificación in-app.
+Criterio: el 100% de devoluciones/altas ofrecen ítems automáticamente al siguiente en la cola.
+
+- Jobs programados internos
+Cron para: expirar reservas, avanzar waitlist, marcar atrasos, recordatorios de vencimiento (in-app).
+Impl.: node-cron o BullMQ (si usas Redis).
+Criterio: reservas vencidas y atrasos se reflejan antes de las 08:00 del día siguiente.
+
+- Políticas de préstamo configurables (por rol y tipo)
+Días hábiles por tipo (libro/recurso), cupos por rol, simultaneidad por base, ventana de renovación.
+Impl.: colección Policies, cache en memoria con invalidación; validationUtils lee dinámicamente.
+Criterio: cambios en Policies aplican sin reiniciar servidor.
+
+- Rendimiento & consistencia
+.lean() en lecturas, paginación uniforme (page/limit/sort), índices en estados y campos de búsqueda, conteos agregados (sin N+1).
+Criterio: p95 de listados de catálogo < 300 ms con 10k registros.
+
+- Escaneo de códigos (browser)
+Lectura de ISBN/QR/barcode desde la cámara del navegador para alta rápida y check-in/out.
+Impl.: getUserMedia + lib de decodificación (JS puro).
+Criterio: flujo de préstamo/devolución vía escaneo en < 10 s.
+
+- Biblioteca digital (préstamo de PDFs/ePub)
+Subida de archivos por título con licencia “n concurrente” (por cupos). Visualización en visor integrado y marca de agua dinámica.
+Impl.: almacenamiento de ficheros, URLs firmadas, control de concurrencia por licencia, registro de evento de lectura.
+Criterio: bloqueo de acceso cuando se exceden los cupos y expiración automática del préstamo digital.
+
+- Gestión de cursos y secciones
+Estructura de cursos, asignaturas, secciones y matrículas para vincular préstamos/recursos y reportes por curso.
+Impl.: modelos Curso, Seccion, Matricula; vistas y filtros en reportes.
+Criterio: todos los reportes pueden filtrarse por curso/sección.
+
+- Repositorio de recursos didácticos
+Carpeta por asignatura/unidad/semana, con roles de lectura/escritura para docentes y lectura para estudiantes.
+Impl.: jerarquía en DB + tags; control de permisos por rol/curso.
+Criterio: búsqueda por palabra clave, asignatura y tag < 300 ms p95.
+
+- Sistema de notificaciones in-app
+Bandeja de notificaciones con badges y “marcar como leído” para: reservas, vencimientos, waitlist, cambios de políticas.
+Impl.: colección Notification, socket simple o pooling; preferencias por usuario.
+Criterio: latencia de entrega < 5 s tras el evento.
+
+- Auditoría y trazabilidad
+Historial por entidad (préstamos, reservas, estados de ejemplar, políticas).
+Impl.: AuditLog con before/after y actor.
+Criterio: cada cambio crítico deja un rastro consultable.
 
 ---
 
