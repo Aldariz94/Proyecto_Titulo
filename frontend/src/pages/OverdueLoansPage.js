@@ -46,12 +46,12 @@ const OverdueLoansPage = () => {
                 Esta lista muestra todos los préstamos que no han sido devueltos y su fecha de vencimiento ya pasó.
             </p>
 
-            <div className="mt-6 overflow-x-auto bg-white rounded-lg shadow dark:bg-gray-800">
+            <div className="mt-6 overflow-x-auto bg-white rounded-lg shadow dark:bg-zinc-800">
                 {loading ? (
                     <div className="p-6 text-center dark:text-gray-300">Cargando préstamos...</div>
                 ) : (
                     <table className="min-w-full text-sm divide-y divide-gray-200 dark:divide-gray-700 responsive-table">
-                        <thead className="bg-gray-50 dark:bg-gray-700">
+                        <thead className="bg-gray-50 dark:bg-zinc-700">
                             <tr>
                                 <th className="px-6 py-3 text-left font-medium text-gray-500 uppercase dark:text-gray-300">Usuario</th>
                                 <th className="px-6 py-3 text-left font-medium text-gray-500 uppercase dark:text-gray-300">Ítem</th>

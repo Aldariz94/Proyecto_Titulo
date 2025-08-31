@@ -10,36 +10,42 @@ exports.getDashboardStats = async (req, res) => {
         const today = new Date();
         const startOfDay = new Date(new Date().setHours(0, 0, 0, 0));
 
-        // --- INICIO DE LA MODIFICACIÓN ---
-        // Se define la consulta correcta para los préstamos atrasados.
-        // Un préstamo está atrasado si su estado es 'enCurso' Y su fecha de vencimiento ya pasó.
         const overdueLoansQuery = {
             estado: 'enCurso',
             fechaVencimiento: { $lt: today }
         };
-        // --- FIN DE LA MODIFICACIÓN ---
+
+        // --- INICIO DE LA CORRECCIÓN ---
 
         const [
             loansToday,
             reservationsToday,
             overdueLoans,
             sanctionedUsers,
-            itemsForAttention
+            problemExemplars,  // 1. Contamos los ejemplares con problemas
+            problemInstances   // 2. Contamos las instancias con problemas
         ] = await Promise.all([
             Loan.countDocuments({ fechaInicio: { $gte: startOfDay } }),
             Reservation.countDocuments({ fechaReserva: { $gte: startOfDay } }),
-            Loan.countDocuments(overdueLoansQuery), // Se utiliza la nueva consulta aquí
+            Loan.countDocuments(overdueLoansQuery),
             User.countDocuments({ sancionHasta: { $gt: new Date() } }),
-            Exemplar.countDocuments({ estado: { $in: ['deteriorado', 'extraviado'] } })
+            Exemplar.countDocuments({ estado: { $in: ['deteriorado', 'extraviado'] } }),
+            // Se añade la consulta para contar los recursos en mantenimiento
+            ResourceInstance.countDocuments({ estado: 'mantenimiento' })
         ]);
+
+        // 3. Sumamos ambos resultados para obtener el total real
+        const itemsForAttention = problemExemplars + problemInstances;
 
         res.json({
             loansToday,
             reservationsToday,
             overdueLoans,
             sanctionedUsers,
-            itemsForAttention
+            itemsForAttention // 4. Enviamos el total combinado
         });
+        
+        // --- FIN DE LA CORRECCIÓN ---
 
     } catch (err) {
         console.error(err.message);

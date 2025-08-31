@@ -1,3 +1,6 @@
+const mongoose = require('mongoose');
+const Book = require('../models/Book');
+const ResourceCRA = require('../models/ResourceCRA');
 const Exemplar = require('../models/Exemplar');
 const ResourceInstance = require('../models/ResourceInstance');
 const Loan = require('../models/Loan');

@@ -226,25 +226,41 @@ exports.importResources = async (req, res) => {
             createdCount = createdResources.length;
 
             const allInstances = [];
-            const instanceCounts = {
-                Básica: await ResourceInstance.countDocuments({ codigoInterno: { $regex: /^RBB/ } }),
-                Media: await ResourceInstance.countDocuments({ codigoInterno: { $regex: /^RBM/ } })
-            };
+            
+            // --- INICIO DE LA CORRECCIÓN ---
+            // 1. Buscamos el último número para cada sede ANTES de empezar a generar nuevos.
+            const lastInstanceBasic = await ResourceInstance.findOne({ codigoInterno: { $regex: /^RBB/ } }).sort({ codigoInterno: -1 });
+            const lastInstanceMedia = await ResourceInstance.findOne({ codigoInterno: { $regex: /^RBM/ } }).sort({ codigoInterno: -1 });
+
+            let nextNumericBasic = lastInstanceBasic ? parseInt(lastInstanceBasic.codigoInterno.split('-')[1]) + 1 : 1;
+            let nextNumericMedia = lastInstanceMedia ? parseInt(lastInstanceMedia.codigoInterno.split('-')[1]) + 1 : 1;
+            // --- FIN DE LA CORRECCIÓN ---
 
             createdResources.forEach(resDoc => {
                 const originalResData = newResourcesData.find(r => r.nombre === resDoc.nombre);
                 const quantity = originalResData ? originalResData.cantidadInstancias : 1;
-                const sedePrefix = resDoc.sede === 'Básica' ? 'RBB' : 'RBM';
-
-                for (let i = 1; i <= quantity; i++) {
-                    const sequentialNumber = (instanceCounts[resDoc.sede] + i).toString().padStart(3, '0');
-                    allInstances.push({
-                        resourceId: resDoc._id,
-                        codigoInterno: `${sedePrefix}-${sequentialNumber}`,
-                        estado: 'disponible'
-                    });
+                
+                if (resDoc.sede === 'Básica') {
+                    for (let i = 0; i < quantity; i++) {
+                        const sequentialNumber = (nextNumericBasic + i).toString().padStart(3, '0');
+                        allInstances.push({
+                            resourceId: resDoc._id,
+                            codigoInterno: `RBB-${sequentialNumber}`,
+                            estado: 'disponible'
+                        });
+                    }
+                    nextNumericBasic += quantity; // Actualizamos el contador para el siguiente recurso del mismo lote.
+                } else { // Sede Media
+                    for (let i = 0; i < quantity; i++) {
+                        const sequentialNumber = (nextNumericMedia + i).toString().padStart(3, '0');
+                        allInstances.push({
+                            resourceId: resDoc._id,
+                            codigoInterno: `RBM-${sequentialNumber}`,
+                            estado: 'disponible'
+                        });
+                    }
+                    nextNumericMedia += quantity; // Actualizamos el contador.
                 }
-                instanceCounts[resDoc.sede] += quantity;
             });
 
             if (allInstances.length > 0) {
@@ -262,6 +278,10 @@ exports.importResources = async (req, res) => {
 
     } catch (error) {
         console.error('Error en la importación de recursos:', error);
+        // Este es el error que estabas viendo.
+        if (error.code === 11000) { // Error de duplicado de MongoDB
+             return res.status(500).json({ msg: 'Error de servidor: Se intentó crear un código interno duplicado. Revisa los datos existentes.' });
+        }
         res.status(500).json({ msg: 'Error en el servidor al procesar el archivo.', details: error.message });
     } finally {
         fs.unlinkSync(filePath);
