@@ -539,6 +539,7 @@ Código (backend & frontend): PolyForm Noncommercial 1.0.0 — [texto completo](
 Documentación y assets (README, guías, plantillas, imágenes): Creative Commons BY-NC-SA 4.0 — [texto completo](https://creativecommons.org/licenses/by-nc-sa/4.0/)
 
 Resumen rápido
+
 Permitido (no comercial): uso académico/estudiantil, modificación y redistribución no comercial con atribución.
 Prohibido: venta, uso con fines comerciales o como servicio de pago, retirar avisos de copyright/licencia.
 Obligatorio: mantener avisos y licencias; en docs/assets, compartir derivados con la misma licencia y con atribución.
