@@ -473,7 +473,7 @@ pm2 save && pm2 startup
 
 ---
 
-## 🧭 Roadmap
+## 🧭 Roadmap de Mejoras Futuras (Biblioteca → Aula Virtual)
 
 - Lista de espera (waitlist) por título/base
 Cuando no haya ejemplares/instancias disponibles, permitir unirse a una cola con posición. Al liberarse stock, se crea una reserva automática para la persona en primer lugar con expiración corta.
@@ -490,11 +490,7 @@ Días hábiles por tipo (libro/recurso), cupos por rol, simultaneidad por base, 
 Impl.: colección Policies, cache en memoria con invalidación; validationUtils lee dinámicamente.
 Criterio: cambios en Policies aplican sin reiniciar servidor.
 
-- Rendimiento & consistencia
-.lean() en lecturas, paginación uniforme (page/limit/sort), índices en estados y campos de búsqueda, conteos agregados (sin N+1).
-Criterio: p95 de listados de catálogo < 300 ms con 10k registros.
-
-- Escaneo de códigos (browser)
+-Escaneo de códigos (browser)
 Lectura de ISBN/QR/barcode desde la cámara del navegador para alta rápida y check-in/out.
 Impl.: getUserMedia + lib de decodificación (JS puro).
 Criterio: flujo de préstamo/devolución vía escaneo en < 10 s.
@@ -514,15 +510,23 @@ Carpeta por asignatura/unidad/semana, con roles de lectura/escritura para docent
 Impl.: jerarquía en DB + tags; control de permisos por rol/curso.
 Criterio: búsqueda por palabra clave, asignatura y tag < 300 ms p95.
 
-- Sistema de notificaciones in-app
-Bandeja de notificaciones con badges y “marcar como leído” para: reservas, vencimientos, waitlist, cambios de políticas.
-Impl.: colección Notification, socket simple o pooling; preferencias por usuario.
-Criterio: latencia de entrega < 5 s tras el evento.
-
 - Auditoría y trazabilidad
 Historial por entidad (préstamos, reservas, estados de ejemplar, políticas).
 Impl.: AuditLog con before/after y actor.
 Criterio: cada cambio crítico deja un rastro consultable.
+
+- Aula Virtual (MVP interno)
+Tareas y entregas por curso/sección con fechas y adjuntos.
+Rúbricas y calificaciones básicas exportables.
+Mensajería/Foro por curso con moderación.
+Asistencia y registro de participación.
+Impl.: modelos Tarea, Entrega, Rúbrica, Calificación, Mensaje, Asistencia. Vistas por rol (docente/estudiante).
+Criterio: cursos operan de forma autónoma sin herramientas externas.
+
+- Cierre anual y rollover
+Archivado de transacciones, reseteo de sanciones, promoción de estudiantes a nuevo curso, preservando históricos.
+Impl.: scripts idempotentes con respaldo; reportes “año anterior”.
+Criterio: proceso repetible en < 1 h (base mediana) sin inconsistencias.
 
 ---
 
