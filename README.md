@@ -47,8 +47,8 @@ Este proyecto forma parte de la titulación en Ingeniería en Informática. Es u
 ### 🔐 Seguridad y Rendimiento
 - **JWT** + roles, **rate limiting** en `/api`, validación de entradas y prevención de NoSQL injection.
 
-### 🌈 UX
-- **React + Tailwind** responsive, **tema oscuro/claro** persistente.
+### 💻 UX
+- **React + Tailwind** responsive, **tema oscuro/claro**.
 
 ---
 
