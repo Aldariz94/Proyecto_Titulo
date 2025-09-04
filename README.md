@@ -240,6 +240,8 @@ Proyecto_Titulo/
 > Estándar: **Yarn 1.x (classic)**. Aunque `backend/package.json` tenga `packageManager: yarn@4`, usamos **Yarn classic** con Corepack para todo.
 
 ```bash
+git clone https://github.com/Aldariz94/Proyecto_Titulo.git
+
 # 1) Habilitar Yarn classic
 corepack enable
 corepack prepare yarn@1.22.19 --activate
