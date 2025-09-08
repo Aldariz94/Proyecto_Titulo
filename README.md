@@ -518,8 +518,6 @@ Impl.: scripts idempotentes con respaldo; reportes “año anterior”.
 
 ## 📜 Licencia
 
-📜 Licencia
-
 Código (backend & frontend): PolyForm Noncommercial 1.0.0 — [texto completo](https://polyformproject.org/licenses/noncommercial/1.0.0/)
 
 Documentación y assets (README, guías, plantillas, imágenes): Creative Commons BY-NC-SA 4.0 — [texto completo](https://creativecommons.org/licenses/by-nc-sa/4.0/)
